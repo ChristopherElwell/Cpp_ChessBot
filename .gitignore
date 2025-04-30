@@ -1,0 +1,24 @@
+# Build files
+*.exe
+*.out
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+
+/testing/stockfish/
+/testing/testing_data/
+
+# IDE junk
+.vscode/
+*.code-workspace
+.idea/
+*.suo
+*.vcxproj*
+*.DS_Store
+
+# OneDrive metadata (since you're using OneDrive)
+*.lnk
+desktop.ini
+Thumbs.db
