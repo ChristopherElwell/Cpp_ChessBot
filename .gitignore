@@ -9,6 +9,7 @@
 
 /testing/stockfish/
 /testing/testing_data/
+/build/
 
 # IDE junk
 .vscode/

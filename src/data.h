@@ -6,9 +6,9 @@
 namespace data {
 
     // TABLE DECLARATIONS
-    extern const std::array<int16_t,768> mg_piece_table;
-    extern const std::array<int16_t,768> eg_piece_table;
-    extern const std::array<int,12> mg_to_eg_values;
+    extern const std::array<int16_t,768> MG_PCTBL;
+    extern const std::array<int16_t,768> EG_PCTBL;
+    extern const std::array<int,12> MG_EG_PCVALS;
     extern const std::array<const char*,64> SQUARES;
     extern const std::array<const char*, 15> PIECE_NAMES;
     extern const std::array<const char,12> PIECE_CODES;
@@ -16,13 +16,12 @@ namespace data {
     extern const std::array<uint64_t,64> KING_MOVES;
     extern const std::array<uint64_t,64> KNIGHT_MOVES;
     extern const std::array<uint8_t, 768> SLIDING_MOVES;
+
+}
+
+namespace masks {
     extern const std::array<uint64_t,15> DIAGS_UP;
     extern const std::array<uint64_t,15> DIAGS_DOWN;
-
-    inline constexpr int MOVES_ARRAY_LENGTH = 230;
-    inline constexpr uint64_t TURN_BIT = 0b10;
-    inline constexpr uint64_t A8 = 0x8000000000000000;
-
     // RANK AND FILES
     inline constexpr uint64_t RANK_1 = 0x00000000000000FF;
     inline constexpr uint64_t RANK_2 = 0x000000000000FF00;
@@ -42,33 +41,33 @@ namespace data {
     inline constexpr uint64_t FILE_G = 0x0202020202020202;
     inline constexpr uint64_t FILE_H = 0x0101010101010101;
 
-    // STRUCTS AND ENUMS
+    inline constexpr uint64_t ANTI_DIAG = 0x8040201008040201;
 
-    enum PIECE_INDEX{
-        WHITE_PAWN,
-        WHITE_KNIGHT,
-        WHITE_BISHOP,
-        WHITE_ROOK,
-        WHITE_QUEEN,
-        WHITE_KING,
-        BLACK_PAWN,
-        BLACK_KNIGHT,
-        BLACK_BISHOP,
-        BLACK_ROOK,
-        BLACK_QUEEN,
-        BLACK_KING,
-        WHITE_PCS,
-        BLACK_PCS,
-        INFO,
-        BOARD_ARRAY_SIZE
-    };
+    extern const std::array<uint64_t,8> RANKS;
+    extern const std::array<uint64_t,8> FILES;
+    extern const std::array<uint64_t,15> DIAGS_DOWN;
+    extern const std::array<uint64_t,15> DIAGS_UP;
 
-    enum class SEARCH_TYPE {
-        LOWER_BOUND,
-        UPPER_BOUND,
-        EXACT
-    };
+}
+// STRUCTS AND ENUMS
 
+enum class SEARCH_TYPE {
+    LOWER_BOUND,
+    UPPER_BOUND,
+    EXACT
+};
+
+inline constexpr int MOVES_ARRAY_LENGTH = 230;
+inline constexpr uint64_t TURN_BIT = 0b10;
+inline constexpr uint64_t A8 = 0x8000000000000000;
+
+inline const char* pc_chars[12] = { u8"♙", u8"♘", u8"♗", u8"♖", u8"♕", u8"♔",
+                             u8"♟", u8"♞", u8"♝", u8"♜", u8"♛", u8"♚" };
+
+inline const char* BLACK_SQ_CHAR = u8"⬛";
+inline const char* WHITE_SQ_CHAR = u8"⬜";
+
+namespace castling {
     // CASTLING MASKS
     inline constexpr uint64_t WHITE_KINGSIDE_SPACE = 0b110ULL;
     inline constexpr uint64_t WHITE_QUEENSIDE_SPACE = 0b01110000ULL;
@@ -85,3 +84,5 @@ namespace data {
     inline constexpr uint64_t BLACK_KINGSIDE_RIGHT = 0b1ULL << 56;
     inline constexpr uint64_t BLACK_QUEENSIDE_RIGHT = 0b10000000ULL << 56;
 }
+
+

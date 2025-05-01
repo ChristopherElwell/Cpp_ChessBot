@@ -2,15 +2,12 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 
 namespace data {
-
-    // ranks & files
-    const std::array<uint64_t,8> RANKS = {RANK_1,RANK_2,RANK_3,RANK_4,RANK_5,RANK_6,RANK_7,RANK_8};
-    const std::array<uint64_t,8> FILES = {FILE_H,FILE_G,FILE_F,FILE_E,FILE_D,FILE_C,FILE_B,FILE_A};
-
+    
     // pc sq tables
-    const std::array<int16_t,768> mg_piece_table = {
+    const std::array<int16_t,768> MG_PCTBL = {
         // White Pawn
         82,   82,   82,   82,   82,   82,   82,   82,    
         180,  216,  143,  177,  150,  208,  116,   71,    
@@ -143,7 +140,7 @@ namespace data {
         -65,   23,   16,  -15,  -56,  -34,    2,   13
     };
 
-    const std::array<int16_t,768> eg_piece_table = {
+    const std::array<int16_t,768> EG_PCTBL = {
         // White Pawn
         94,   94,   94,   94,   94,   94,   94,   94,    
         272,  267,  252,  228,  241,  226,  259,  281,    
@@ -276,7 +273,7 @@ namespace data {
         -74,  -35,  -18,  -18,  -11,   15,    4,  -17,
     };
 
-    const std::array<int,12> mg_to_eg_values = {0,2,2,4,8,0,0,2,2,4,8,0};
+    const std::array<int,12> MG_EG_PCVALS = {0,2,2,4,8,0,0,2,2,4,8,0};
 
     // helpers
     const std::array<const char*,64> SQUARES = {
@@ -299,16 +296,6 @@ namespace data {
     const std::array<const char,12> PIECE_CODES = {
     'P','N','B','R','Q','K',
     'p','n','b','r','q','k',
-    };
-
-    const std::array<const char*, 7> MOVE_TYPES = {
-        "EMPTY",
-        "CAPTURE",
-        "PROMOTE",
-        "CAPTURE & PROMOTE",
-        "KINGSIDE CASTLE",
-        "QUEENSIDE CASTLE",
-        "BOOKEND"
     };
 
     // move gen
@@ -401,6 +388,10 @@ namespace data {
         0x2,0x5,0xa,0x14,0x28,0x50,0xa0,0x40
     };
 
+}
+
+namespace masks{
+
     const std::array<uint64_t,15> DIAGS_UP = {
         0,
         0x102,
@@ -418,7 +409,7 @@ namespace data {
         0x04080000000000000,
         0
     };
-        
+
     const std::array<uint64_t,15> DIAGS_DOWN = {
         0,
         0x8040,
@@ -436,4 +427,8 @@ namespace data {
         0x0201000000000000,
         0
     };
+
+    const std::array<uint64_t,8> RANKS = {RANK_1,RANK_2,RANK_3,RANK_4,RANK_5,RANK_6,RANK_7,RANK_8};
+
+    const std::array<uint64_t,8> FILES = {FILE_H,FILE_G,FILE_F,FILE_E,FILE_D,FILE_C,FILE_B,FILE_A};
 }
