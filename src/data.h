@@ -62,7 +62,7 @@ inline constexpr uint64_t TURN_BIT = 0b10;
 inline constexpr uint64_t A8 = 0x8000000000000000;
 
 inline const char* pc_chars[12] = { u8"♙", u8"♘", u8"♗", u8"♖", u8"♕", u8"♔",
-                             u8"♟", u8"♞", u8"♝", u8"♜", u8"♛", u8"♚" };
+                                    u8"♟", u8"♞", u8"♝", u8"♜", u8"♛", u8"♚" };
 
 inline const char* BLACK_SQ_CHAR = u8"⬛";
 inline const char* WHITE_SQ_CHAR = u8"⬜";

@@ -6,6 +6,61 @@
 #include <iostream>
 #include <string>
 
+struct BitScan {
+    public:
+        struct Iterator {
+            uint64_t mask;
+            uint64_t bit;
+            uint64_t operator*() const { return bit; }
+            Iterator& operator++() { mask &= (mask - 1); bit = mask & -mask; return *this; }
+            bool operator!=(const Iterator& other) const {return mask != other.mask; }
+        };
+
+        Iterator begin() const { return Iterator{start, start & -start}; }
+        Iterator end() const { return Iterator{0,0}; }
+
+        BitScan(uint64_t mask) : start(mask) {};
+
+    private:
+        uint64_t start;
+};
+
+
+bool compare_moves(const Move& a, const Move& b) {
+    // First compare move types
+    if (a.type != b.type) {
+        return a.type > b.type;  // Higher type comes first
+    }
+    
+    // If move types are the same, compare based on move type
+    switch (a.type) {
+        case movType::QUIET:
+            return a.pc1 > b.pc1;  // Higher pc2 comes first
+            
+        case movType::CAPTURE:
+            // Primary: compare captured pieces (pc2)
+            if (b.pc2 != a.pc2) {
+                return a.pc2 > b.pc2;  // Higher pc2 comes first
+            }
+            // Secondary: compare capturing pieces (pc1)
+            return b.pc1 > a.pc1;  // Lower pc1 comes first
+            
+        case movType::PROMOTE:
+            return a.pc2 > b.pc2;  // Higher promotion piece comes first
+            
+        case movType::CAPTURE_PROMOTE:
+            // Primary: compare promotion piece (pc3)
+            if (b.pc3 != a.pc3) {
+                return a.pc3 > b.pc3;  // Higher pc3 comes first
+            }
+            // Secondary: compare captured pieces (pc2)
+            return a.pc2 > b.pc2;  // Higher pc2 comes first
+            
+        default:
+            return false;  // Equal (maintains stable sort)
+    }
+}
+
 uint64_t sq_from_name(char file, char rank){
     return masks::RANKS[rank - '1'] & masks::FILES['h' - file];
 }
@@ -28,7 +83,7 @@ void print_bitboard(const uint64_t& b){
 }
 
 std::ostream& operator<<(std::ostream& os, Piece p) {
-    return os << pc_chars[static_cast<int>(p)];
+    return os  << pc_chars[static_cast<int>(p)] << " " ;
 }
 
 std::ostream& operator<<(std::ostream& os, movType m) {
@@ -45,9 +100,53 @@ std::ostream& operator<<(std::ostream& os, movType m) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Move& m){
+    switch(m.type){
+        case movType::QUIET:
+            return os << "Quiet " << m.pc1 << "\n";
+        case movType::CAPTURE:
+            return os << m.pc1 << " takes " << m.pc2 << "\n";
+        case movType::PROMOTE:
+            return os << m.pc1 << " promotes to " << m.pc2 << "\n";
+        case movType::CAPTURE_PROMOTE:
+            return os << m.pc1 << " takes " << m.pc2 << " and promotes to " << m.pc3 << "\n";
+        case movType::CASTLE_KINGSIDE:
+            return os << "O-O\n";
+        case movType::CASTLE_QUEENSIDE:
+            return os << "O-O-O\n";
+        case movType::BOOK_END:
+            return os << "Bookend\n";
+    }
+    return os << "unknown move";
+}
 
-    os << "Move Type: " << m.type << "\n";
-    os << "Primary Piece: " << m.pc1;
+std::ostream& operator<<(std::ostream& os, const BitBoard& bb){
+    std::string reset = "\033[0m";
+    std::string light = "\033[48;5;187m";
+    std::string dark  = "\033[48;5;66m";
+    os << "8 ";
+    for (int i = 0; i < 64; i++){
+        std::cout << ((i%8 + i/8)%2 == 0 ? light : dark);
+        int piece_found = 0;
+        for (Piece pc : PieceRange::all()){
+            if (bb[pc] & (1ULL << (63 - i))){
+                os << pc;
+                piece_found = 1;
+                break;
+            } 
+        }
+        if (!piece_found){
+            os << "  ";
+        }
+        if ((i+1)%8 == 0 && i != 63){
+            os << reset << "\n" << 8 - (i + 1)/8 << " ";
+        } 
+    }
+    return os << reset << "\n  a b c d e f g h\n\n";
+}
+
+void print_move_short(const Move& m){
+    std::cout << "Move Type: " << m.type << "\n";
+    std::cout << "Primary Piece: " << m.pc1;
 
     print_bitboard(m.mov1);
     
@@ -56,69 +155,17 @@ std::ostream& operator<<(std::ostream& os, const Move& m){
         case movType::CASTLE_KINGSIDE:
         case movType::CASTLE_QUEENSIDE:
         case movType::BOOK_END:
-        return os;
         case movType::CAPTURE:
-            os << "Captured Piece: " << m.pc2;
+            std::cout << "Captured Piece: " << m.pc2;
             print_bitboard(m.mov2);
-            return os;
         case movType::PROMOTE:
-            os << "Promotee Piece: " << m.pc2;
+            std::cout << "Promotee Piece: " << m.pc2;
             print_bitboard(m.mov2);
-            return os;
         case movType::CAPTURE_PROMOTE:
-            os << "Captured Piece: " << m.pc2;
+            std::cout << "Captured Piece: " << m.pc2;
             print_bitboard(m.mov2);
-            os << "Promotee Piece: " << m.pc3;
+            std::cout << "Promotee Piece: " << m.pc3;
             print_bitboard(m.mov3);
-            return os;
-    }
-
-    return os << "unknown";
-}
-
-std::ostream& operator<<(std::ostream& os, const BitBoard& bb){
-    for (int i = 0; i < 64; i++){
-        if(i%8 == 0){
-            os << 8 - i/8;
-        } else if ((i+1)%8 == 0){
-            os << "\n";
-        } else {
-            for (Piece pc : PieceRange::all()){
-                if (bb[pc] & (1ULL << (63 - i))){
-                    os << pc;
-                    break;
-                } else {
-                    os << " ";
-                }
-            }
-        }
-    }
-    return os << "  a b c d e f g h\n\n";
-}
-
-void print_move_short(const Move& m){
-    switch(m.type){
-        case movType::QUIET:
-            std::cout << "Quiet " << m.pc1 << "\n";
-            return;
-        case movType::CAPTURE:
-            std::cout << m.pc1 << " takes " << m.pc2 << "\n";
-            return;
-        case movType::PROMOTE:
-            std::cout << m.pc1 << " promotes to " << m.pc2 << "\n";
-            return;
-        case movType::CAPTURE_PROMOTE:
-            std::cout << m.pc1 << " takes " << m.pc2 << " and promotes to " << m.pc3 << "\n";
-            return;
-        case movType::CASTLE_KINGSIDE:
-            std::cout << "O-O\n";
-            return;
-        case movType::CASTLE_QUEENSIDE:
-            std::cout << "O-O-O\n";
-            return;
-        case movType::BOOK_END:
-            std::cout << "Bookend\n";
-            return;
     }
 }
 

@@ -3,11 +3,17 @@
 #include <cstdint>
 
 struct Move {
-    movType type;
-    uint64_t mov1, mov2, mov3;
-    Piece pc1, pc2, pc3;
+    Piece pc1;
+    uint64_t mov1;
+    Piece pc2;
+    uint64_t mov2;
+    Piece pc3;
+    uint64_t mov3;
+    
     uint64_t info;
+    movType type;
 
+    Move();
     Move(Piece pc1, uint64_t mov1,
                    Piece pc2, uint64_t mov2,
                    Piece pc3, uint64_t mov3,

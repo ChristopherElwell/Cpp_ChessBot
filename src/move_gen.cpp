@@ -2,6 +2,7 @@
 #include "move.h"
 #include "data.h"
 #include "bitboard.h"
+#include "helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -609,25 +610,6 @@ int MoveGen::get_black_queen_moves(std::array<Move,MOVES_ARRAY_LENGTH>& movs, co
 
 // GET LEGAL MOVES
 // used to get all legal moves given a board position
-
-// passed into q_sort to apply move sorting heuristics to improve alpha-beta pruning efficiency
-int MoveGen::compare_moves(const Move& a, const Move& b){
-    if (a.type != b.type){
-        return b.type - a.type;
-    }
-    switch (a.type){
-        case movType::QUIET:
-            return b.pc2 - a.pc2;
-        case movType::CAPTURE:
-            return ((b.pc2 - a.pc2) << 4) + (a.pc1 - b.pc1);
-        case movType::PROMOTE:
-            return b.pc2 - a.pc2;
-        case movType::CAPTURE_PROMOTE:
-            return ((b.pc3 - a.pc3) << 8) + ((b.pc2 - a.pc2) << 4) + (a.pc1 - b.pc1);
-        default:
-            return 0;
-    }
-}
 
 uint64_t MoveGen::get_white_attackers(const BitBoard& board){
     uint64_t attacks = 0;

@@ -45,7 +45,7 @@ struct PieceRange {
         static PieceRange White(){ return PieceRange(Piece::WHITE_PAWN, Piece::WHITE_KING); }
         static PieceRange BlackNoKing(){ return PieceRange(Piece::BLACK_PAWN, Piece::BLACK_QUEEN); }
         static PieceRange WhiteNoKing(){ return PieceRange(Piece::WHITE_PAWN, Piece::WHITE_QUEEN); }
-        static PieceRange all(){ return PieceRange(Piece::WHITE_PAWN, Piece::BLACK_PAWN); }
+        static PieceRange all(){ return PieceRange(Piece::WHITE_PAWN, Piece::BLACK_KING); }
 
     private:
         Piece start;
@@ -54,10 +54,9 @@ struct PieceRange {
 
 class BitBoard {
     private:
-        std::array<uint64_t, 12> board;
-        uint64_t& operator[](Piece p);
-    
-    public:
+        std::array<uint64_t, static_cast<int>(Piece::PIECECOUNT)> board{};
+        
+        public:
         BitBoard(const std::string& FEN);
         const uint64_t& operator[](Piece p) const;
         void apply_move(const Move& m);

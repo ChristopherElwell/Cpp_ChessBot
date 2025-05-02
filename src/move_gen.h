@@ -14,6 +14,7 @@ enum class movType : int{
     BOOK_END
 };
 
+
 constexpr int operator-(const movType a, const movType b){
     return static_cast<int>(a) - static_cast<int>(b);
 }
@@ -42,8 +43,6 @@ class MoveGen{
         
         int get_white_king_moves(std::array<Move,MOVES_ARRAY_LENGTH>& movs,const BitBoard& board, int& idx);
         int get_black_king_moves(std::array<Move,MOVES_ARRAY_LENGTH>& movs,const BitBoard& board, int& idx);
-
-        static int compare_moves(const Move& a, const Move& b);
 
     public:
         uint64_t get_white_attackers(const BitBoard& board);

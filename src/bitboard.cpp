@@ -7,10 +7,6 @@
 #include <array>
 #include <unordered_map>
 
-uint64_t& BitBoard::operator[](Piece p){
-    return board[static_cast<int>(p)];
-}
-
 const uint64_t& BitBoard::operator[](Piece p) const {
     return board[static_cast<int>(p)];
 }
@@ -45,10 +41,10 @@ BitBoard::BitBoard(const std::string& FEN){
             case 'b':
             case 'r':
             case 'q':
-                (*this)[Piece_code_map[p]] |= 1LL << (63 - sq);
+            case 'k':
+                board[static_cast<int>(Piece_code_map[p])] |= 1LL << (63 - sq);
                 sq++;
                 break;
-            case 'k':
             case '1':
             case '2':
             case '3':
@@ -70,23 +66,23 @@ BitBoard::BitBoard(const std::string& FEN){
     }
 
     idx++;
-    if(FEN[idx] == 'w') (*this)[Piece::INFO] |= TURN_BIT;
+    if(FEN[idx] == 'w') board[static_cast<int>(Piece::INFO)] |= TURN_BIT;
         
     idx += 2;
 
-    for(idx; FEN[idx] != ' '; idx++){
+    for(; FEN[idx] != ' '; idx++){
         switch (FEN[idx]){
             case 'K':
-                (*this)[Piece::INFO] |= castling::WHITE_KINGSIDE_RIGHT;
+                board[static_cast<int>(Piece::INFO)] |= castling::WHITE_KINGSIDE_RIGHT;
                 break;
             case 'Q':
-                (*this)[Piece::INFO] |= castling::WHITE_QUEENSIDE_RIGHT;
+                board[static_cast<int>(Piece::INFO)] |= castling::WHITE_QUEENSIDE_RIGHT;
                 break;
             case 'k':
-                (*this)[Piece::INFO] |= castling::BLACK_KINGSIDE_RIGHT;
+                board[static_cast<int>(Piece::INFO)] |= castling::BLACK_KINGSIDE_RIGHT;
                 break;
             case 'q':
-                (*this)[Piece::INFO] |= castling::BLACK_QUEENSIDE_RIGHT;
+                board[static_cast<int>(Piece::INFO)] |= castling::BLACK_QUEENSIDE_RIGHT;
                 break;
         }
     }
@@ -96,51 +92,48 @@ BitBoard::BitBoard(const std::string& FEN){
     if (FEN[idx] != '-'){
         char file = FEN[idx++];
         char rank = FEN[idx++];
-        (*this)[Piece::INFO] |= sq_from_name(file,rank);
+        board[static_cast<int>(Piece::INFO)] |= sq_from_name(file,rank);
     }
 
-    (*this)[Piece::WHITE_PCS] = 
-        (*this)[Piece::WHITE_PAWN] |
-        (*this)[Piece::WHITE_KNIGHT] |
-        (*this)[Piece::WHITE_BISHOP] |
-        (*this)[Piece::WHITE_ROOK] |
-        (*this)[Piece::WHITE_QUEEN] |
-        (*this)[Piece::WHITE_KING];
+    board[static_cast<int>(Piece::WHITE_PCS)] = 
+        board[static_cast<int>(Piece::WHITE_PAWN)] |
+        board[static_cast<int>(Piece::WHITE_KNIGHT)] |
+        board[static_cast<int>(Piece::WHITE_BISHOP)] |
+        board[static_cast<int>(Piece::WHITE_ROOK)] |
+        board[static_cast<int>(Piece::WHITE_QUEEN)] |
+        board[static_cast<int>(Piece::WHITE_KING)];
     
-    (*this)[Piece::BLACK_PCS] = 
-        (*this)[Piece::BLACK_PAWN] |
-        (*this)[Piece::BLACK_KNIGHT] |
-        (*this)[Piece::BLACK_BISHOP] |
-        (*this)[Piece::BLACK_ROOK] |
-        (*this)[Piece::BLACK_QUEEN] |
-        (*this)[Piece::BLACK_KING];
-    std::cout << "Bitboard constructor done\n";
-
+    board[static_cast<int>(Piece::BLACK_PCS)] = 
+        board[static_cast<int>(Piece::BLACK_PAWN)] |
+        board[static_cast<int>(Piece::BLACK_KNIGHT)] |
+        board[static_cast<int>(Piece::BLACK_BISHOP)] |
+        board[static_cast<int>(Piece::BLACK_ROOK)] |
+        board[static_cast<int>(Piece::BLACK_QUEEN)] |
+        board[static_cast<int>(Piece::BLACK_KING)];
 }
-
 
 void BitBoard::apply_move(const Move& m){
 
-    (*this)[m.pc1] ^= m.mov1;
-    (*this)[m.pc2] ^= m.mov2;
-    (*this)[m.pc3] ^= m.mov3;
+    board[static_cast<int>(m.pc1)] ^= m.mov1;
+    board[static_cast<int>(m.pc2)] ^= m.mov2;
+    board[static_cast<int>(m.pc3)] ^= m.mov3;
     
-    (*this)[Piece::INFO] ^= m.info;
+    board[static_cast<int>(Piece::INFO)] ^= m.info;
     
-    (*this)[Piece::WHITE_PCS] = 
-        (*this)[Piece::WHITE_PAWN] |
-        (*this)[Piece::WHITE_KNIGHT] |
-        (*this)[Piece::WHITE_BISHOP] |
-        (*this)[Piece::WHITE_ROOK] |
-        (*this)[Piece::WHITE_QUEEN] |
-        (*this)[Piece::WHITE_KING]; 
+    board[static_cast<int>(Piece::WHITE_PCS)] = 
+        board[static_cast<int>(Piece::WHITE_PAWN)] |
+        board[static_cast<int>(Piece::WHITE_KNIGHT)] |
+        board[static_cast<int>(Piece::WHITE_BISHOP)] |
+        board[static_cast<int>(Piece::WHITE_ROOK)] |
+        board[static_cast<int>(Piece::WHITE_QUEEN)] |
+        board[static_cast<int>(Piece::WHITE_KING)]; 
     
-    (*this)[Piece::BLACK_PCS] = 
-        (*this)[Piece::BLACK_PAWN] |
-        (*this)[Piece::BLACK_KNIGHT] |
-        (*this)[Piece::BLACK_BISHOP] |
-        (*this)[Piece::BLACK_ROOK] |
-        (*this)[Piece::BLACK_QUEEN] |
-        (*this)[Piece::BLACK_KING]; 
+    board[static_cast<int>(Piece::BLACK_PCS)] = 
+        board[static_cast<int>(Piece::BLACK_PAWN)] |
+        board[static_cast<int>(Piece::BLACK_KNIGHT)] |
+        board[static_cast<int>(Piece::BLACK_BISHOP)] |
+        board[static_cast<int>(Piece::BLACK_ROOK)] |
+        board[static_cast<int>(Piece::BLACK_QUEEN)] |
+        board[static_cast<int>(Piece::BLACK_KING)]; 
 
 }
