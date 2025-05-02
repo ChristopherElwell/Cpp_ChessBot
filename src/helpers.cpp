@@ -3,85 +3,153 @@
 #include "bitboard.h"
 #include "move.h"
 #include "data.h"
+#include "search.h"
 #include <iostream>
 #include <string>
+#include <vector>
 
-struct BitScan {
-    public:
-        struct Iterator {
-            uint64_t mask;
-            uint64_t bit;
-            uint64_t operator*() const { return bit; }
-            Iterator& operator++() { mask &= (mask - 1); bit = mask & -mask; return *this; }
-            bool operator!=(const Iterator& other) const {return mask != other.mask; }
-        };
+namespace helpers {
+    void free_search_result(SearchRes* sr){
+        if (!sr) return;
 
-        Iterator begin() const { return Iterator{start, start & -start}; }
-        Iterator end() const { return Iterator{0,0}; }
+        SearchRes* child = sr->best_result;
+        sr->best_result = nullptr;
 
-        BitScan(uint64_t mask) : start(mask) {};
+        free_search_result(child);
+        delete sr;
+    }
 
-    private:
-        uint64_t start;
-};
+    bool compare_moves(const Move& a, const Move& b) {
+        // First compare move types
+        if (a.type != b.type) {
+            return a.type > b.type;  // Higher type comes first
+        }
+        
+        // If move types are the same, compare based on move type
+        switch (a.type) {
+            case movType::QUIET:
+                return a.pc1 > b.pc1;  // Higher pc2 comes first
+                
+            case movType::CAPTURE:
+                // Primary: compare captured pieces (pc2)
+                if (b.pc2 != a.pc2) {
+                    return a.pc2 > b.pc2;  // Higher pc2 comes first
+                }
+                // Secondary: compare capturing pieces (pc1)
+                return b.pc1 > a.pc1;  // Lower pc1 comes first
+                
+            case movType::PROMOTE:
+                return a.pc2 > b.pc2;  // Higher promotion piece comes first
+                
+            case movType::CAPTURE_PROMOTE:
+                // Primary: compare promotion piece (pc3)
+                if (b.pc3 != a.pc3) {
+                    return a.pc3 > b.pc3;  // Higher pc3 comes first
+                }
+                // Secondary: compare captured pieces (pc2)
+                return a.pc2 > b.pc2;  // Higher pc2 comes first
+                
+            default:
+                return false;  // Equal (maintains stable sort)
+        }
+    }
 
+    uint64_t sq_from_name(char file, char rank){
+        return masks::RANKS[rank - '1'] & masks::FILES['h' - file];
+    }
 
-bool compare_moves(const Move& a, const Move& b) {
-    // First compare move types
-    if (a.type != b.type) {
-        return a.type > b.type;  // Higher type comes first
+    void print_bitboard(const uint64_t& b){
+        for (int i = 0; i < 64; i++){
+            if(i%8 == 0){
+                std::cout << 8 - i/8 << " ";
+            }
+            if (b & (1ULL << (63 - i))){
+                std::cout << WHITE_SQ_CHAR;
+            } else {
+                std::cout << BLACK_SQ_CHAR;
+            }
+            if ((i+1)%8 == 0){
+                std::cout << "\n";
+            }
+        }
+        std::cout << "  a b c d e f g h\n\n";
+    }
+
+    void print_move_verbose(const Move& m){
+        std::cout << "Move Type: " << m.type << "\n";
+        std::cout << "Primary Piece: " << m.pc1 << "\n";
+    
+        print_bitboard(m.mov1);
+        
+        switch (m.type){
+            case movType::QUIET:
+            case movType::CASTLE_KINGSIDE:
+            case movType::CASTLE_QUEENSIDE:
+            case movType::BOOK_END:
+                break;
+                case movType::CAPTURE:
+                std::cout << "Captured Piece: " << m.pc2;
+                print_bitboard(m.mov2);
+                break;
+                case movType::PROMOTE:
+                std::cout << "Promotee Piece: " << m.pc2;
+                print_bitboard(m.mov2);
+                break;
+                case movType::CAPTURE_PROMOTE:
+                std::cout << "Captured Piece: " << m.pc2;
+                print_bitboard(m.mov2);
+                std::cout << "Promotee Piece: " << m.pc3;
+                print_bitboard(m.mov3);
+                break;
+        }
+
+        std::cout << "Info:\n";
+        print_bitboard(m.info);
     }
     
-    // If move types are the same, compare based on move type
-    switch (a.type) {
-        case movType::QUIET:
-            return a.pc1 > b.pc1;  // Higher pc2 comes first
-            
-        case movType::CAPTURE:
-            // Primary: compare captured pieces (pc2)
-            if (b.pc2 != a.pc2) {
-                return a.pc2 > b.pc2;  // Higher pc2 comes first
-            }
-            // Secondary: compare capturing pieces (pc1)
-            return b.pc1 > a.pc1;  // Lower pc1 comes first
-            
-        case movType::PROMOTE:
-            return a.pc2 > b.pc2;  // Higher promotion piece comes first
-            
-        case movType::CAPTURE_PROMOTE:
-            // Primary: compare promotion piece (pc3)
-            if (b.pc3 != a.pc3) {
-                return a.pc3 > b.pc3;  // Higher pc3 comes first
-            }
-            // Secondary: compare captured pieces (pc2)
-            return a.pc2 > b.pc2;  // Higher pc2 comes first
-            
-        default:
-            return false;  // Equal (maintains stable sort)
+    std::string move_to_uci(const Move& mov, const BitBoard& board){
+        if (mov.type == movType::BOOK_END){
+            return "BOOKEND";
+        }
+        std::string out;
+        uint64_t starting_sq = mov.mov1 & board[mov.pc1];
+        uint64_t ending_sq = mov.mov1 & ~board[mov.pc1];
+        if (starting_sq == 0 || ending_sq == 0) {
+            return "INVALID";
+        }
+        out += data::SQUARES[__builtin_ctzll(starting_sq)];
+        out += data::SQUARES[__builtin_ctzll(ending_sq)];
+        switch (mov.type){
+            case movType::QUIET:
+            case movType::CAPTURE:
+            case movType::CASTLE_KINGSIDE:
+            case movType::CASTLE_QUEENSIDE:
+                return out;
+            case movType::PROMOTE:
+                out += data::PIECE_CODES[static_cast<int>(mov.pc2)];
+                return out;
+            case movType::CAPTURE_PROMOTE:
+                out += data::PIECE_CODES[static_cast<int>(mov.pc3)];
+                return out;
+            default:
+                return "UNKNOWN";
+        }
+    
+        return out;
+    }
+
+    void print_principal_variation(const SearchRes* sr, BitBoard bb) {
+        const SearchRes* curr = sr;
+    
+        std::cout << "PV (eval = " << curr->best_eval << "): ";
+    
+        while (curr && curr->best_result) {
+            std::cout << helpers::move_to_uci(curr->best_move,bb);
+            bb.apply_move(curr->best_move); 
+            curr = curr->best_result;
+        }
     }
 }
-
-uint64_t sq_from_name(char file, char rank){
-    return masks::RANKS[rank - '1'] & masks::FILES['h' - file];
-}
-
-void print_bitboard(const uint64_t& b){
-    for (int i = 0; i < 64; i++){
-        if(i%8 == 0){
-            std::cout << 8 - i/8 << " ";
-        }
-        if (b & (1ULL << (63 - i))){
-            std::cout << WHITE_SQ_CHAR;
-        } else {
-            std::cout << BLACK_SQ_CHAR;
-        }
-        if ((i+1)%8 == 0){
-            std::cout << "\n";
-        }
-    }
-    std::cout << "  a b c d e f g h\n\n";
-}
-
 std::ostream& operator<<(std::ostream& os, Piece p) {
     return os  << pc_chars[static_cast<int>(p)] << " " ;
 }
@@ -144,58 +212,3 @@ std::ostream& operator<<(std::ostream& os, const BitBoard& bb){
     return os << reset << "\n  a b c d e f g h\n\n";
 }
 
-void print_move_short(const Move& m){
-    std::cout << "Move Type: " << m.type << "\n";
-    std::cout << "Primary Piece: " << m.pc1;
-
-    print_bitboard(m.mov1);
-    
-    switch (m.type){
-        case movType::QUIET:
-        case movType::CASTLE_KINGSIDE:
-        case movType::CASTLE_QUEENSIDE:
-        case movType::BOOK_END:
-        case movType::CAPTURE:
-            std::cout << "Captured Piece: " << m.pc2;
-            print_bitboard(m.mov2);
-        case movType::PROMOTE:
-            std::cout << "Promotee Piece: " << m.pc2;
-            print_bitboard(m.mov2);
-        case movType::CAPTURE_PROMOTE:
-            std::cout << "Captured Piece: " << m.pc2;
-            print_bitboard(m.mov2);
-            std::cout << "Promotee Piece: " << m.pc3;
-            print_bitboard(m.mov3);
-    }
-}
-
-std::string move_to_uci(const Move& mov, const BitBoard& board){
-    if (mov.type == movType::BOOK_END){
-        return "BOOKEND";
-    }
-    std::string out;
-    uint64_t starting_sq = mov.mov1 & board[mov.pc1];
-    uint64_t ending_sq = mov.mov1 & ~board[mov.pc1];
-    if (starting_sq == 0 || ending_sq == 0) {
-        return "INVALID";
-    }
-    out += data::SQUARES[__builtin_ctzll(starting_sq)];
-    out += data::SQUARES[__builtin_ctzll(ending_sq)];
-    switch (mov.type){
-        case movType::QUIET:
-        case movType::CAPTURE:
-        case movType::CASTLE_KINGSIDE:
-        case movType::CASTLE_QUEENSIDE:
-            return out;
-        case movType::PROMOTE:
-            out += data::PIECE_CODES[static_cast<int>(mov.pc2)];
-            return out;
-        case movType::CAPTURE_PROMOTE:
-            out += data::PIECE_CODES[static_cast<int>(mov.pc3)];
-            return out;
-        default:
-            return "UNKNOWN";
-    }
-
-    return out;
-}

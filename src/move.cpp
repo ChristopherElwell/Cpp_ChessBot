@@ -33,5 +33,5 @@ Move Move::castle_queenside(Piece pc1, uint64_t mov1, Piece pc2, uint64_t mov2, 
 }
 
 Move Move::copy(const Move& m){
-    return Move(m.pc1,m.mov1,m.pc2,m.mov2,m.pc2,m.mov2,m.info,m.type);
+    return Move(m.pc1,m.mov1,m.pc2,m.mov2,m.pc3,m.mov3,m.info,m.type);   
 }

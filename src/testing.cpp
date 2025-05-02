@@ -75,7 +75,7 @@ namespace tests {
                 uint64_t perft = perft_search(bb,mg,iter - 1);
                 total_perft += perft;
                 bb.apply_move(m);
-                std::cout << move_to_uci(m,bb) << ": " << perft << "\n";
+                std::cout << helpers::move_to_uci(m,bb) << ": " << perft << "\n";
             }
         } else {
             mg.get_white_moves(movs,bb);
@@ -90,7 +90,7 @@ namespace tests {
                 uint64_t perft = perft_search(bb,mg,iter - 1);
                 total_perft += perft;
                 bb.apply_move(m);
-                std::cout << move_to_uci(m,bb) << ": " << perft;
+                std::cout << helpers::move_to_uci(m,bb) << ": " << perft;
             }
         }
         return total_perft;

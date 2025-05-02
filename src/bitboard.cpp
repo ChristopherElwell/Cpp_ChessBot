@@ -92,7 +92,7 @@ BitBoard::BitBoard(const std::string& FEN){
     if (FEN[idx] != '-'){
         char file = FEN[idx++];
         char rank = FEN[idx++];
-        board[static_cast<int>(Piece::INFO)] |= sq_from_name(file,rank);
+        board[static_cast<int>(Piece::INFO)] |= helpers::sq_from_name(file,rank);
     }
 
     board[static_cast<int>(Piece::WHITE_PCS)] = 

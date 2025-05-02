@@ -672,7 +672,7 @@ void MoveGen::get_white_moves(std::array<Move,MOVES_ARRAY_LENGTH>& movs,const Bi
     movs[idx].type = movType::BOOK_END;
 
     // apply move ordering
-    std::sort(movs.begin(), movs.begin() + idx, compare_moves);
+    std::sort(movs.begin(), movs.begin() + idx, helpers::compare_moves);
 }
 
 // black side interfacing function
@@ -687,5 +687,5 @@ void MoveGen::get_black_moves(std::array<Move,MOVES_ARRAY_LENGTH>& movs, const B
     movs[idx].type = movType::BOOK_END;
     
     // apply move ordering
-    std::sort(movs.begin(), movs.begin() + idx, compare_moves);
+    std::sort(movs.begin(), movs.begin() + idx, helpers::compare_moves);
 }

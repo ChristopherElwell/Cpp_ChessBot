@@ -1,3 +1,4 @@
+#pragma once
 #include "move_gen.h"
 #include "bitboard.h"
 #include <cstdint>
@@ -25,5 +26,6 @@ struct Move {
     static Move promote_capture(Piece pc1, uint64_t mov1, Piece pc2, uint64_t mov2, Piece pc3, uint64_t mov3, uint64_t info, uint64_t board_info);
     static Move castle_kingside(Piece pc1, uint64_t mov1, Piece pc2, uint64_t mov2, uint64_t info, uint64_t board_info);
     static Move castle_queenside(Piece pc1, uint64_t mov1, Piece pc2, uint64_t mov2, uint64_t info, uint64_t board_info);
-    static Move copy(const Move&);
+    static Move copy(const Move& m);
+    std::string uci(const BitBoard& bb);
 };
