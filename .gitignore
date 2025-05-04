@@ -10,6 +10,8 @@
 /testing/stockfish/
 /testing/testing_data/
 /build/
+/bin/
+/pieces/
 
 # IDE junk
 .vscode/
@@ -23,3 +25,5 @@
 *.lnk
 desktop.ini
 Thumbs.db
+
+game.py

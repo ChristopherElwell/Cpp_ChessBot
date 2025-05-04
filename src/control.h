@@ -6,6 +6,6 @@
 
 namespace control
 {
-    std::string get_bot_move(std::string FEN, int max_depth);
-    
+    std::string get_bot_move_at_depth(std::string FEN, int max_depth);
+    void receiver();
 } // namespace control

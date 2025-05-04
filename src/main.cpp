@@ -11,7 +11,9 @@
 #include <cstdint>
 #include <iostream>
 #include <array>
+#include <time.h>
 
-int main(){
-    std::string move = control::get_bot_move("8/3kr1P1/pR1B3p/2Pb4/8/P4qP1/7P/4K3 w - - 0 5",5);
+int main()
+{
+    control::receiver();
 }

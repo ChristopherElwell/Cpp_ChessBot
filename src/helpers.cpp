@@ -88,17 +88,17 @@ namespace helpers {
             case movType::BOOK_END:
                 break;
                 case movType::CAPTURE:
-                std::cout << "Captured Piece: " << m.pc2;
+                std::cout << "Captured Piece: " << m.pc2 << "\n";
                 print_bitboard(m.mov2);
                 break;
                 case movType::PROMOTE:
-                std::cout << "Promotee Piece: " << m.pc2;
+                std::cout << "Promotee Piece: " << m.pc2 << "\n";
                 print_bitboard(m.mov2);
                 break;
                 case movType::CAPTURE_PROMOTE:
-                std::cout << "Captured Piece: " << m.pc2;
+                std::cout << "Captured Piece: " << m.pc2 << "\n";
                 print_bitboard(m.mov2);
-                std::cout << "Promotee Piece: " << m.pc3;
+                std::cout << "Promotee Piece: " << m.pc3 << "\n";
                 print_bitboard(m.mov3);
                 break;
         }
@@ -144,7 +144,7 @@ namespace helpers {
         std::cout << "PV (eval = " << curr->best_eval << "): ";
     
         while (curr && curr->best_result) {
-            std::cout << helpers::move_to_uci(curr->best_move,bb);
+            std::cout << helpers::move_to_uci(curr->best_move,bb) << ", ";
             bb.apply_move(curr->best_move); 
             curr = curr->best_result;
         }
