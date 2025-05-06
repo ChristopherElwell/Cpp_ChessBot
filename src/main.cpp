@@ -15,6 +15,5 @@
 
 int main()
 {
-    // control::receiver();
-    test_positions::test_win_at_chess(100);
+    control::receiver();
 }

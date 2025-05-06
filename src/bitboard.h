@@ -5,7 +5,8 @@
 
 struct Move;
 
-enum class Piece : int{
+enum class Piece : int
+{
     WHITE_PAWN,
     WHITE_KNIGHT,
     WHITE_BISHOP,
@@ -24,40 +25,49 @@ enum class Piece : int{
     PIECECOUNT
 };
 
-constexpr int operator-(const Piece a, const Piece b){
+constexpr int operator-(const Piece a, const Piece b)
+{
     return static_cast<int>(a) - static_cast<int>(b);
 }
 
-struct PieceRange {
-    public:
-        struct Iterator {
-            int value;
-            Piece operator*() const {return static_cast<Piece>(value); }
-            Iterator& operator++() { ++value; return *this; }
-            bool operator!=(const Iterator& other) const {return value != other.value; }
-        };
+struct PieceRange
+{
+public:
+    struct Iterator
+    {
+        int value;
+        Piece operator*() const { return static_cast<Piece>(value); }
+        Iterator &operator++()
+        {
+            ++value;
+            return *this;
+        }
+        bool operator!=(const Iterator &other) const { return value != other.value; }
+    };
 
-        Iterator begin() const { return {static_cast<int>(start)}; }
-        Iterator end() const { return {static_cast<int>(stop) + 1}; }
+    Iterator begin() const { return {static_cast<int>(start)}; }
+    Iterator end() const { return {static_cast<int>(stop) + 1}; }
 
-        PieceRange(Piece start, Piece stop) : start(start), stop(stop) {};
-        static PieceRange Black(){ return PieceRange(Piece::BLACK_PAWN, Piece::BLACK_KING); }
-        static PieceRange White(){ return PieceRange(Piece::WHITE_PAWN, Piece::WHITE_KING); }
-        static PieceRange BlackNoKing(){ return PieceRange(Piece::BLACK_PAWN, Piece::BLACK_QUEEN); }
-        static PieceRange WhiteNoKing(){ return PieceRange(Piece::WHITE_PAWN, Piece::WHITE_QUEEN); }
-        static PieceRange all(){ return PieceRange(Piece::WHITE_PAWN, Piece::BLACK_KING); }
+    PieceRange(Piece start, Piece stop) : start(start), stop(stop) {};
+    static PieceRange Black() { return PieceRange(Piece::BLACK_PAWN, Piece::BLACK_KING); }
+    static PieceRange White() { return PieceRange(Piece::WHITE_PAWN, Piece::WHITE_KING); }
+    static PieceRange BlackNoKing() { return PieceRange(Piece::BLACK_PAWN, Piece::BLACK_QUEEN); }
+    static PieceRange WhiteNoKing() { return PieceRange(Piece::WHITE_PAWN, Piece::WHITE_QUEEN); }
+    static PieceRange all() { return PieceRange(Piece::WHITE_PAWN, Piece::BLACK_KING); }
 
-    private:
-        Piece start;
-        Piece stop;
+private:
+    Piece start;
+    Piece stop;
 };
 
-class BitBoard {
-    private:
-        std::array<uint64_t, static_cast<int>(Piece::PIECECOUNT)> board{};
-        
-        public:
-        BitBoard(const std::string& FEN);
-        const uint64_t& operator[](Piece p) const;
-        void apply_move(const Move& m);
+class BitBoard
+{
+private:
+    std::array<uint64_t, static_cast<int>(Piece::PIECECOUNT)> board{};
+
+public:
+    BitBoard(const std::string &FEN);
+    BitBoard();
+    const uint64_t &operator[](Piece p) const;
+    void apply_move(const Move &m);
 };

@@ -15,7 +15,9 @@ namespace helpers
     void free_search_result(SearchRes *sr)
     {
         if (!sr)
+        {
             return;
+        }
 
         SearchRes *child = sr->best_result;
         sr->best_result = nullptr;

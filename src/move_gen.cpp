@@ -812,3 +812,15 @@ void MoveGen::get_black_moves(std::array<Move, MOVES_ARRAY_LENGTH> &movs, const 
     // apply move ordering
     std::sort(movs.begin(), movs.begin() + idx, helpers::compare_moves);
 }
+
+void MoveGen::get_moves(std::array<Move, MOVES_ARRAY_LENGTH> &movs, const BitBoard &board)
+{
+    if (board[Piece::INFO] & TURN_BIT)
+    {
+        get_white_moves(movs, board);
+    }
+    else
+    {
+        get_black_moves(movs, board);
+    }
+}

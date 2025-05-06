@@ -55,4 +55,5 @@ public:
     uint64_t get_black_attackers(const BitBoard &board);
     void get_white_moves(std::array<Move, MOVES_ARRAY_LENGTH> &movs, const BitBoard &board);
     void get_black_moves(std::array<Move, MOVES_ARRAY_LENGTH> &movs, const BitBoard &board);
+    void get_moves(std::array<Move, MOVES_ARRAY_LENGTH> &movs, const BitBoard &board);
 };
