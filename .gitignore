@@ -6,12 +6,16 @@
 *.a
 *.lib
 *.dll
+*.log
+*.json
 
 /testing/stockfish/
 /testing/testing_data/
 /build/
 /bin/
+/out/
 /pieces/
+/.cache/
 private.h
 
 # IDE junk
@@ -28,3 +32,4 @@ desktop.ini
 Thumbs.db
 
 game.py
+.clang-tidy

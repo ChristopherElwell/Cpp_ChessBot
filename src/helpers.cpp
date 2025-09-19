@@ -1,368 +1,298 @@
 #include "helpers.h"
-#include "move_gen.h"
 #include "bitboard.h"
-#include "move.h"
 #include "data.h"
+#include "move.h"
+#include "move_gen.h"
 #include "search.h"
+#include <cstdint>
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <fstream>
-#include <sstream>
 
-namespace helpers
-{
-    void free_search_result(SearchRes *sr)
-    {
-        if (!sr)
-        {
-            return;
-        }
+using namespace std;
 
-        SearchRes *child = sr->best_result;
-        sr->best_result = nullptr;
+namespace helpers {
+void free_search_result(SearchRes *result) {
+  if (result == nullptr) {
+    return;
+  }
 
-        free_search_result(child);
-        delete sr;
-    }
+  SearchRes *child = result->best_result;
+  result->best_result = nullptr;
 
-    bool compare_moves(const Move &a, const Move &b)
-    {
-        // First compare move types
-        if (a.type != b.type)
-        {
-            return a.type > b.type; // Higher type comes first
-        }
-
-        // If move types are the same, compare based on move type
-        switch (a.type)
-        {
-        case movType::QUIET:
-            return a.pc1 > b.pc1; // Higher pc2 comes first
-
-        case movType::CAPTURE:
-            // Primary: compare captured pieces (pc2)
-            if (b.pc2 != a.pc2)
-            {
-                return a.pc2 > b.pc2; // Higher pc2 comes first
-            }
-            // Secondary: compare capturing pieces (pc1)
-            return b.pc1 > a.pc1; // Lower pc1 comes first
-
-        case movType::PROMOTE:
-            return a.pc2 > b.pc2; // Higher promotion piece comes first
-
-        case movType::CAPTURE_PROMOTE:
-            // Primary: compare promotion piece (pc3)
-            if (b.pc3 != a.pc3)
-            {
-                return a.pc3 > b.pc3; // Higher pc3 comes first
-            }
-            // Secondary: compare captured pieces (pc2)
-            return a.pc2 > b.pc2; // Higher pc2 comes first
-
-        default:
-            return false; // Equal (maintains stable sort)
-        }
-    }
-
-    uint64_t sq_from_name(char file, char rank)
-    {
-        return masks::RANKS[rank - '1'] & masks::FILES['h' - file];
-    }
-
-    void print_bitboard(const uint64_t &b)
-    {
-        for (int i = 0; i < 64; i++)
-        {
-            if (i % 8 == 0)
-            {
-                std::cout << 8 - i / 8 << " ";
-            }
-            if (b & (1ULL << (63 - i)))
-            {
-                std::cout << WHITE_SQ_CHAR;
-            }
-            else
-            {
-                std::cout << BLACK_SQ_CHAR;
-            }
-            if ((i + 1) % 8 == 0)
-            {
-                std::cout << "\n";
-            }
-        }
-        std::cout << "  a b c d e f g h\n\n";
-    }
-
-    void print_move_verbose(const Move &m)
-    {
-        std::cout << "Move Type: " << m.type << "\n";
-        std::cout << "Primary Piece: " << m.pc1 << "\n";
-
-        print_bitboard(m.mov1);
-
-        switch (m.type)
-        {
-        case movType::QUIET:
-        case movType::CASTLE_KINGSIDE:
-        case movType::CASTLE_QUEENSIDE:
-        case movType::BOOK_END:
-            break;
-        case movType::CAPTURE:
-            std::cout << "Captured Piece: " << m.pc2 << "\n";
-            print_bitboard(m.mov2);
-            break;
-        case movType::PROMOTE:
-            std::cout << "Promotee Piece: " << m.pc2 << "\n";
-            print_bitboard(m.mov2);
-            break;
-        case movType::CAPTURE_PROMOTE:
-            std::cout << "Captured Piece: " << m.pc2 << "\n";
-            print_bitboard(m.mov2);
-            std::cout << "Promotee Piece: " << m.pc3 << "\n";
-            print_bitboard(m.mov3);
-            break;
-        }
-
-        std::cout << "Info:\n";
-        print_bitboard(m.info);
-    }
-
-    std::string move_to_uci(const Move &mov, const BitBoard &board)
-    {
-        if (mov.type == movType::BOOK_END)
-        {
-            return "BOOKEND";
-        }
-        std::string out;
-        uint64_t starting_sq = mov.mov1 & board[mov.pc1];
-        uint64_t ending_sq = mov.mov1 & ~board[mov.pc1];
-        if (starting_sq == 0 || ending_sq == 0)
-        {
-            return "INVALID";
-        }
-        out += data::SQUARES[__builtin_ctzll(starting_sq)];
-        out += data::SQUARES[__builtin_ctzll(ending_sq)];
-        switch (mov.type)
-        {
-        case movType::QUIET:
-        case movType::CAPTURE:
-        case movType::CASTLE_KINGSIDE:
-        case movType::CASTLE_QUEENSIDE:
-            return out;
-        case movType::PROMOTE:
-            out += data::PIECE_CODES[static_cast<int>(mov.pc2)];
-            return out;
-        case movType::CAPTURE_PROMOTE:
-            out += data::PIECE_CODES[static_cast<int>(mov.pc3)];
-            return out;
-        default:
-            return "UNKNOWN";
-        }
-
-        return out;
-    }
-
-    void print_principal_variation(const SearchRes *sr, BitBoard bb)
-    {
-        const SearchRes *curr = sr;
-
-        std::cout << "PV (eval = " << curr->best_eval << "): ";
-
-        while (curr && curr->best_result)
-        {
-            std::cout << helpers::move_to_uci(curr->best_move, bb) << ", ";
-            bb.apply_move(curr->best_move);
-            curr = curr->best_result;
-        }
-    }
-
-    std::vector<std::vector<std::string>> read_csv(const std::string &filename)
-    {
-        std::vector<std::vector<std::string>> result;
-        std::ifstream file(filename);
-
-        if (!file.is_open())
-        {
-            std::cerr << "Error opening file\n";
-            return result;
-        }
-
-        std::string line;
-        while (std::getline(file, line))
-        {
-            std::vector<std::string> row;
-            std::stringstream ss(line);
-            std::string cell;
-
-            while (std::getline(ss, cell, ','))
-            {
-                row.push_back(cell);
-            }
-
-            result.push_back(row);
-        }
-
-        return result;
-    }
-
-    std::string move_to_algebreic(const Move &mov, BitBoard bb)
-    {
-        uint64_t to_pos = mov.mov1 & ~bb[mov.pc1];
-        uint64_t from_pos = mov.mov1 & ~to_pos;
-        std::string out;
-        std::string to = data::SQUARES[__builtin_ctzll(to_pos)];
-        std::string from = data::SQUARES[__builtin_ctzll(from_pos)];
-        if (mov.pc1 == Piece::WHITE_PAWN || mov.pc1 == Piece::BLACK_PAWN)
-        {
-            switch (mov.type)
-            {
-            case movType::QUIET:
-                out = to;
-                break;
-            case movType::CAPTURE:
-                out = from[0] + "x" + to;
-                break;
-            case movType::PROMOTE:
-                out = to + data::PIECE_CODES[static_cast<int>(mov.pc2) % 6];
-                break;
-            case movType::CAPTURE_PROMOTE:
-                out = from[0] + data::SQUARES[__builtin_ctzll(mov.mov2)] + data::PIECE_CODES[static_cast<int>(mov.pc3) % 6];
-                break;
-            case movType::CASTLE_KINGSIDE:
-            case movType::CASTLE_QUEENSIDE:
-            default:
-                return "Unknown";
-                break;
-            }
-        }
-        else
-        {
-            switch (mov.type)
-            {
-            case movType::QUIET:
-                out = std::string(1, data::PIECE_CODES[static_cast<int>(mov.pc1) % 6]) + to;
-                break;
-            case movType::CAPTURE:
-
-                out = std::string(1, data::PIECE_CODES[static_cast<int>(mov.pc1) % 6]) + "x" + to;
-                break;
-            case movType::CASTLE_KINGSIDE:
-                out = "O-O";
-                break;
-            case movType::CASTLE_QUEENSIDE:
-                out = "O-O-O";
-                break;
-            case movType::CAPTURE_PROMOTE:
-            default:
-                return "Unknown";
-            }
-        }
-        MoveGen mg;
-        if (bb[Piece::INFO] & TURN_BIT)
-        {
-            bb.apply_move(mov);
-            if (bb[Piece::BLACK_KING] & mg.get_white_attackers(bb))
-            {
-                return out + "+";
-            }
-            else
-            {
-                return out;
-            }
-        }
-        else
-        {
-            bb.apply_move(mov);
-            if (bb[Piece::WHITE_KING] & mg.get_black_attackers(bb))
-            {
-                return out + "+";
-            }
-            else
-            {
-                return out;
-            }
-        }
-    }
-}
-std::ostream &operator<<(std::ostream &os, Piece p)
-{
-    return os << pc_chars[static_cast<int>(p)] << " ";
+  free_search_result(child);
+  delete result;
 }
 
-std::ostream &operator<<(std::ostream &os, movType m)
-{
-    switch (m)
-    {
+auto sq_from_name(char file, char rank) -> uint64_t {
+  return masks::RANKS[rank - '1'] & masks::FILES['h' - file];
+}
+
+void print_bitboard(const uint64_t &board) {
+  for (int i = 0; i < 64; i++) {
+    if (i % 8 == 0) {
+      cout << 8 - (i / 8) << " ";
+    }
+    if ((board & (1ULL << (63 - i))) != 0) {
+      cout << WHITE_SQ_CHAR;
+    } else {
+      cout << BLACK_SQ_CHAR;
+    }
+    if ((i + 1) % 8 == 0) {
+      cout << "\n";
+    }
+  }
+  cout << "  a b c d e f g h\n\n";
+}
+
+void print_move_verbose(const Move &move) {
+  cout << "Move Type: " << move.type << "\n";
+  cout << "Primary Piece: " << move.pc1 << "\n";
+
+  print_bitboard(move.mov1);
+
+  switch (move.type) {
+  case movType::QUIET:
+  case movType::CASTLE_KINGSIDE:
+  case movType::CASTLE_QUEENSIDE:
+  case movType::BOOK_END:
+    break;
+  case movType::CAPTURE:
+    cout << "Captured Piece: " << move.pc2 << "\n";
+    print_bitboard(move.mov2);
+    break;
+  case movType::PROMOTE:
+    cout << "Promotee Piece: " << move.pc2 << "\n";
+    print_bitboard(move.mov2);
+    break;
+  case movType::CAPTURE_PROMOTE:
+    cout << "Captured Piece: " << move.pc2 << "\n";
+    print_bitboard(move.mov2);
+    cout << "Promotee Piece: " << move.pc3 << "\n";
+    print_bitboard(move.mov3);
+    break;
+  }
+
+  cout << "Info:\n";
+  print_bitboard(move.info);
+}
+
+auto move_to_uci(const Move &mov, const BitBoard &board) -> string {
+  if (mov.type == movType::BOOK_END) {
+    return "BOOKEND";
+  }
+  string out;
+  uint64_t starting_sq = 0;
+  uint64_t ending_sq = 0;
+  switch (mov.type) {
+  case movType::QUIET:
+  case movType::CAPTURE:
+  case movType::CASTLE_KINGSIDE:
+  case movType::CASTLE_QUEENSIDE:
+    starting_sq = mov.mov1 & board[mov.pc1];
+    ending_sq = mov.mov1 & ~board[mov.pc1];
+    if (__builtin_ctzll(starting_sq) >= 64 ||
+        __builtin_ctzll(ending_sq) >= 64) {
+      print_bitboard(mov.mov1);
+      print_bitboard(board[mov.pc1]);
+      print_bitboard(starting_sq);
+      print_bitboard(ending_sq);
+      cout << mov;
+      return "";
+    }
+    out += data::SQUARES[__builtin_ctzll(starting_sq)];
+    out += data::SQUARES[__builtin_ctzll(ending_sq)];
+    return out;
+  case movType::PROMOTE:
+  case movType::CAPTURE_PROMOTE:
+    starting_sq = mov.mov1 & board[mov.pc1];
+    ending_sq = mov.mov2 & ~board[mov.pc2];
+
+    cout << __builtin_ctzll(starting_sq) << ", " << __builtin_ctzll(ending_sq)
+         << "\n";
+    out += data::SQUARES[__builtin_ctzll(starting_sq)];
+    out += data::SQUARES[__builtin_ctzll(ending_sq)];
+    out += data::PIECE_CODES[static_cast<int>(mov.pc2)];
+    return out;
+  case movType::BOOK_END:
+    return "BOOK END";
+  default:
+    return "UNKNOWN";
+  }
+
+  return out;
+}
+
+void print_principal_variation(const SearchRes *searchres, BitBoard board) {
+  const SearchRes *curr = searchres;
+
+  cout << "PV (eval = " << curr->best_eval << "): ";
+
+  while (curr != nullptr && curr->best_result != nullptr) {
+    cout << helpers::move_to_uci(curr->best_move, board) << ", ";
+    board.apply_move(curr->best_move);
+    curr = curr->best_result;
+  }
+}
+
+auto read_csv(const string &filename) -> vector<vector<string>> {
+  vector<vector<string>> result;
+  ifstream file(filename);
+
+  if (!file.is_open()) {
+    cerr << "Error opening file\n";
+    return result;
+  }
+
+  string line;
+  while (getline(file, line)) {
+    vector<string> row;
+    stringstream stream(line);
+    string cell;
+
+    while (getline(stream, cell, ',')) {
+      row.push_back(cell);
+    }
+
+    result.push_back(row);
+  }
+
+  return result;
+}
+
+auto move_to_algebreic(const Move &mov, BitBoard board) -> string {
+  const uint64_t to_pos = mov.mov1 & ~board[mov.pc1];
+  const uint64_t from_pos = mov.mov1 & ~to_pos;
+  string out;
+  string destination = data::SQUARES[__builtin_ctzll(to_pos)];
+  string origin = data::SQUARES[__builtin_ctzll(from_pos)];
+  if (mov.pc1 == Piece::WHITE_PAWN || mov.pc1 == Piece::BLACK_PAWN) {
+    switch (mov.type) {
     case movType::QUIET:
-        return os << "Quiet";
+      out = destination;
+      break;
     case movType::CAPTURE:
-        return os << "Capture";
+      out = format("{}x{}", origin[0], destination);
+      break;
     case movType::PROMOTE:
-        return os << "Promote";
+      out = format("{}{}", destination,
+                   data::PIECE_CODES[static_cast<int>(mov.pc2) % 6]);
+      break;
     case movType::CAPTURE_PROMOTE:
-        return os << "Capture & Promote";
+      out = format("{}{}", origin[0], data::SQUARES[__builtin_ctzll(mov.mov2)],
+                   data::PIECE_CODES[static_cast<int>(mov.pc3) % 6]);
+      break;
     case movType::CASTLE_KINGSIDE:
-        return os << "Castle Kingside";
     case movType::CASTLE_QUEENSIDE:
-        return os << "Castle Queenside";
-    case movType::BOOK_END:
-        return os << "Bookend";
+    default:
+      return "Unknown";
+      break;
     }
-    return os << "Unknown";
-}
-
-std::ostream &operator<<(std::ostream &os, const Move &m)
-{
-    switch (m.type)
-    {
+  } else {
+    switch (mov.type) {
     case movType::QUIET:
-        return os << "Quiet " << m.pc1 << "\n";
+      out = string(1, data::PIECE_CODES[static_cast<int>(mov.pc1) % 6]) +
+            destination;
+      break;
     case movType::CAPTURE:
-        return os << m.pc1 << " takes " << m.pc2 << "\n";
-    case movType::PROMOTE:
-        return os << m.pc1 << " promotes to " << m.pc2 << "\n";
-    case movType::CAPTURE_PROMOTE:
-        return os << m.pc1 << " takes " << m.pc2 << " and promotes to " << m.pc3 << "\n";
+
+      out = string(1, data::PIECE_CODES[static_cast<int>(mov.pc1) % 6]) + "x" +
+            destination;
+      break;
     case movType::CASTLE_KINGSIDE:
-        return os << "O-O\n";
+      out = "O-O";
+      break;
     case movType::CASTLE_QUEENSIDE:
-        return os << "O-O-O\n";
-    case movType::BOOK_END:
-        return os << "Bookend\n";
+      out = "O-O-O";
+      break;
+    case movType::CAPTURE_PROMOTE:
+    default:
+      return "Unknown";
     }
-    return os << "unknown move";
+  }
+  auto move_gen = MoveGen(board);
+  if (board.whites_turn()) {
+    board.apply_move(mov);
+    return ((board[Piece::BLACK_KING] & move_gen.get_white_attackers(board)) !=
+            0)
+               ? out + "+"
+               : out;
+  }
+
+  board.apply_move(mov);
+  return ((board[Piece::WHITE_KING] & move_gen.get_black_attackers(board)) != 0)
+             ? out + "+"
+             : out;
+}
+} // namespace helpers
+auto operator<<(ostream &outstrm, Piece piece) -> ostream & {
+  return outstrm << data::PIECE_NAMES[static_cast<int>(piece)];
 }
 
-std::ostream &operator<<(std::ostream &os, const BitBoard &bb)
-{
-    std::string reset = "\033[0m";
-    std::string light = "\033[48;5;187m";
-    std::string dark = "\033[48;5;66m";
-    os << "8 ";
-    for (int i = 0; i < 64; i++)
-    {
-        std::cout << ((i % 8 + i / 8) % 2 == 0 ? light : dark);
-        int piece_found = 0;
-        for (Piece pc : PieceRange::all())
-        {
-            if (bb[pc] & (1ULL << (63 - i)))
-            {
-                os << pc;
-                piece_found = 1;
-                break;
-            }
-        }
-        if (!piece_found)
-        {
-            os << "  ";
-        }
-        if ((i + 1) % 8 == 0 && i != 63)
-        {
-            os << reset << "\n"
-               << 8 - (i + 1) / 8 << " ";
-        }
+auto operator<<(ostream &outstrm, movType type) -> ostream & {
+  switch (type) {
+  case movType::QUIET:
+    return outstrm << "Quiet";
+  case movType::CAPTURE:
+    return outstrm << "Capture";
+  case movType::PROMOTE:
+    return outstrm << "Promote";
+  case movType::CAPTURE_PROMOTE:
+    return outstrm << "Capture & Promote";
+  case movType::CASTLE_KINGSIDE:
+    return outstrm << "Castle Kingside";
+  case movType::CASTLE_QUEENSIDE:
+    return outstrm << "Castle Queenside";
+  case movType::BOOK_END:
+    return outstrm << "Bookend";
+  }
+  return outstrm << "Unknown";
+}
+
+auto operator<<(ostream &outstrm, const Move &move) -> ostream & {
+  switch (move.type) {
+  case movType::QUIET:
+    return outstrm << "Quiet " << move.pc1 << "\n";
+  case movType::CAPTURE:
+    return outstrm << move.pc1 << " takes " << move.pc2 << "\n";
+  case movType::PROMOTE:
+    return outstrm << move.pc1 << " promotes to " << move.pc2 << "\n";
+  case movType::CAPTURE_PROMOTE:
+    return outstrm << move.pc1 << " takes " << move.pc2 << " and promotes to "
+                   << move.pc3 << "\n";
+  case movType::CASTLE_KINGSIDE:
+    return outstrm << "O-O\n";
+  case movType::CASTLE_QUEENSIDE:
+    return outstrm << "O-O-O\n";
+  case movType::BOOK_END:
+    return outstrm << "Bookend\n";
+  }
+  return outstrm << "unknown move";
+}
+
+auto operator<<(ostream &outstrm, const BitBoard &board) -> ostream & {
+  const string reset = "\033[0m";
+  const string light = "\033[48;5;187m";
+  const string dark = "\033[48;5;66m";
+  outstrm << "8 ";
+  for (int i = 0; i < 64; i++) {
+    cout << ((i % 8 + i / 8) % 2 == 0 ? light : dark);
+    int piece_found = 0;
+    for (const auto piece : PieceRange::all()) {
+      if ((board[piece] & (1ULL << (63 - i))) != 0) {
+        outstrm << pc_chars[static_cast<int>(piece)] << " ";
+        piece_found = 1;
+        break;
+      }
     }
-    return os << reset << "\n  a b c d e f g h\n\n";
+    if (piece_found == 0) {
+      outstrm << "  ";
+    }
+    if ((i + 1) % 8 == 0 && i != 63) {
+      outstrm << reset << "\n" << 8 - ((i + 1) / 8) << " ";
+    }
+  }
+  return outstrm << reset << "\n  a b c d e f g h\n\n";
 }
