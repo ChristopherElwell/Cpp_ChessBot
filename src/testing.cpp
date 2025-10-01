@@ -15,7 +15,7 @@
 
 using namespace std;
 
-namespace {
+namespace perft {
 auto perft_search(BitBoard &board, int iter) -> uint64_t {
   if (iter == 0) {
     return 1;
@@ -52,9 +52,7 @@ auto perft_search(BitBoard &board, int iter) -> uint64_t {
   }
   return perft;
 }
-} // namespace
 
-namespace perft {
 const static array<pair<string, array<uint64_t, 6>>, 6> PERFT_DATA = {
     make_pair("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
               array<uint64_t, 6>{20, 400, 8902, 197281, 4865609, 119060324}),

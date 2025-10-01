@@ -341,7 +341,7 @@ void MoveGen::white_pawn_taking_moves(const int offset) {
       if (taken_piece == 0) {
         continue;
       }
-      const uint64_t promotion_sq = (take & masks::RANK_1);
+      const uint64_t promotion_sq = (take & masks::RANK_8);
       if (promotion_sq != 0) {
         m_movs[m_idx++] = Move::promote_capture(
             Piece::WHITE_PAWN, take >> offset, piece, taken_piece,
@@ -357,7 +357,7 @@ void MoveGen::white_pawn_taking_moves(const int offset) {
             Piece::WHITE_ROOK, promotion_sq, 0, m_board[Piece::INFO]);
       } else {
         m_movs[m_idx++] =
-            Move::capture(Piece::BLACK_PAWN, take | take >> offset, piece,
+            Move::capture(Piece::WHITE_PAWN, take | take >> offset, piece,
                           taken_piece, 0, m_board[Piece::INFO]);
       }
       break;
@@ -562,7 +562,7 @@ auto MoveGen::is_white_king_in_check() -> bool {
        get_white_rook_attacks(m_board[Piece::WHITE_KING])) != 0) {
     return true;
   }
-  if ((m_board[Piece::BLACK_BISHOP] &
+  if (((m_board[Piece::BLACK_BISHOP] | m_board[Piece::BLACK_QUEEN]) &
        get_white_bishop_attacks(m_board[Piece::WHITE_KING])) != 0) {
     return true;
   }
@@ -587,7 +587,7 @@ auto MoveGen::is_black_king_in_check() -> bool {
        get_black_rook_attacks(m_board[Piece::BLACK_KING])) != 0) {
     return true;
   }
-  if ((m_board[Piece::WHITE_BISHOP] &
+  if (((m_board[Piece::WHITE_BISHOP] | m_board[Piece::WHITE_QUEEN]) &
        get_black_bishop_attacks(m_board[Piece::BLACK_KING])) != 0) {
     return true;
   }

@@ -93,28 +93,22 @@ auto move_to_uci(const Move &mov, const BitBoard &board) -> string {
   case movType::CASTLE_QUEENSIDE:
     starting_sq = mov.mov1 & board[mov.pc1];
     ending_sq = mov.mov1 & ~board[mov.pc1];
-    if (__builtin_ctzll(starting_sq) >= 64 ||
-        __builtin_ctzll(ending_sq) >= 64) {
-      print_bitboard(mov.mov1);
-      print_bitboard(board[mov.pc1]);
-      print_bitboard(starting_sq);
-      print_bitboard(ending_sq);
-      cout << mov;
-      return "";
-    }
     out += data::SQUARES[__builtin_ctzll(starting_sq)];
     out += data::SQUARES[__builtin_ctzll(ending_sq)];
     return out;
   case movType::PROMOTE:
-  case movType::CAPTURE_PROMOTE:
     starting_sq = mov.mov1 & board[mov.pc1];
-    ending_sq = mov.mov2 & ~board[mov.pc2];
-
-    cout << __builtin_ctzll(starting_sq) << ", " << __builtin_ctzll(ending_sq)
-         << "\n";
+    ending_sq = mov.mov2;
     out += data::SQUARES[__builtin_ctzll(starting_sq)];
     out += data::SQUARES[__builtin_ctzll(ending_sq)];
-    out += data::PIECE_CODES[static_cast<int>(mov.pc2)];
+    out += data::PIECE_CODES[static_cast<size_t>(mov.pc2)];
+    return out;
+  case movType::CAPTURE_PROMOTE:
+    starting_sq = mov.mov1 & board[mov.pc1];
+    ending_sq = mov.mov3;
+    out += data::SQUARES[__builtin_ctzll(starting_sq)];
+    out += data::SQUARES[__builtin_ctzll(ending_sq)];
+    out += data::PIECE_CODES[static_cast<size_t>(mov.pc3)];
     return out;
   case movType::BOOK_END:
     return "BOOK END";
