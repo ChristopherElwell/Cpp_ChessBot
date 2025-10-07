@@ -1,7 +1,7 @@
 #include "eval.h"
 #include "bitboard.h"
-#include "data.h"
 #include "bitscan.h"
+#include "data.h"
 
 using namespace std;
 
@@ -37,5 +37,6 @@ auto evaluate(const BitBoard &board) -> int
     {
         return mg_eval;
     }
-    return (mg_eval * mg_to_eg_counter + eg_eval * (max_piece_val - mg_to_eg_counter)) / max_piece_val;
+    return (mg_eval * mg_to_eg_counter + eg_eval * (max_piece_val - mg_to_eg_counter)) /
+           max_piece_val;
 }
