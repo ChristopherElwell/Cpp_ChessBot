@@ -2,7 +2,6 @@
 #include "bitboard.h"
 #include "bitscan.h"
 #include "data.h"
-#include "helpers.h"
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -582,7 +581,7 @@ auto MoveGen::get_black_attackers(const BitBoard &m_board) -> uint64_t
 }
 
 // NOLINTBEGIN
-auto MoveGen::is_white_king_in_check() -> bool
+auto MoveGen::is_white_king_in_check() const -> bool
 {
     if (((m_board[Piece::BLACK_ROOK] | m_board[Piece::BLACK_QUEEN]) &
          get_white_rook_attacks(m_board[Piece::WHITE_KING])) != 0)
@@ -613,7 +612,7 @@ auto MoveGen::is_white_king_in_check() -> bool
     return false;
 }
 
-auto MoveGen::is_black_king_in_check() -> bool
+auto MoveGen::is_black_king_in_check() const -> bool
 {
     if (((m_board[Piece::WHITE_ROOK] | m_board[Piece::WHITE_QUEEN]) &
          get_black_rook_attacks(m_board[Piece::BLACK_KING])) != 0)
@@ -687,9 +686,10 @@ auto MoveGen::compare_moves(const Move &mov_a, const Move &mov_b) -> bool
 
 auto MoveGen::get(size_t idx) -> Move & { return m_movs[idx]; }
 
+template<side_t side>
 void MoveGen::gen()
 {
-    if (m_board.whites_turn())
+    if constexpr (side == side_t::white)
     {
         get_white_queen_moves();
         get_white_rook_moves();
@@ -713,3 +713,6 @@ void MoveGen::gen()
 }
 
 MoveGen::MoveGen(const BitBoard &board) : m_board(board) {}
+
+template void MoveGen::gen<side_t::white>();
+template void MoveGen::gen<side_t::black>();

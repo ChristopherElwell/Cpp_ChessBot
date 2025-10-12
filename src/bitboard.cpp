@@ -1,10 +1,10 @@
 #include "bitboard.h"
 #include "data.h"
-#include "helpers.h"
 #include "move.h"
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <format>
 #include <string>
 #include <unordered_map>
 
@@ -103,7 +103,7 @@ BitBoard::BitBoard(const string &FEN)
     {
         const char file = FEN[idx++];
         const char rank = FEN[idx++];
-        board[static_cast<int>(Piece::INFO)] |= helpers::sq_from_name(file, rank);
+        board[static_cast<int>(Piece::INFO)] |= sq_from_name(file, rank);
     }
 
     board[static_cast<int>(Piece::WHITE_PCS)] =
@@ -170,4 +170,9 @@ auto BitBoard::draw() const -> string
         }
     }
     return out + reset + "\n  a b c d e f g h\n\n";
+}
+
+auto BitBoard::sq_from_name(char file, char rank) -> uint64_t
+{
+    return masks::RANKS[rank - '1'] & masks::FILES['h' - file];
 }

@@ -6,6 +6,15 @@
 
 struct Move;
 
+enum class side_t : uint8_t {
+  white,
+  black
+};
+
+constexpr auto operator~(side_t side) noexcept -> side_t {
+    return side == side_t::white ? side_t::black : side_t::white;
+}
+
 enum class Piece : uint8_t
 {
     WHITE_PAWN,
@@ -86,6 +95,8 @@ class BitBoard
   private:
     std::array<uint64_t, static_cast<int>(Piece::PIECECOUNT)> board{};
     static constexpr uint64_t TURN_BIT = 0b10;
+
+    static auto sq_from_name(char file, char rank) -> uint64_t;
 
   public:
     static auto start_position() -> BitBoard;

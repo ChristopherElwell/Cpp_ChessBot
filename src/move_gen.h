@@ -60,12 +60,25 @@ class MoveGen
 
     auto get(size_t idx) -> Move &;
 
-    auto is_white_king_in_check() -> bool;
-    auto is_black_king_in_check() -> bool;
+    [[nodiscard]] auto is_white_king_in_check() const -> bool;
+    [[nodiscard]] auto is_black_king_in_check() const -> bool;
+
+    template<side_t side>
+    [[nodiscard]] constexpr auto is_king_in_check() const -> bool{
+      if constexpr (side == side_t::white) {
+        return is_white_king_in_check();
+      } else {
+          return is_black_king_in_check();
+          
+      }
+    }
 
     auto get_white_attackers(const BitBoard &board) -> uint64_t;
     auto get_black_attackers(const BitBoard &board) -> uint64_t;
+
+    template<side_t side>
     void gen();
+
     MoveGen(const BitBoard &board);
 
     auto operator[](int idx) -> Move { return m_movs[idx]; }
