@@ -68,12 +68,10 @@ void run_perft_test(int max_draft)
 {
     int perft_test_counter = 1;
     int tests_passed = 0;
-    for (auto [fen, counts] : perft_tests)
+    for (auto [fen, correct_perfts] : perft_tests)
     {
         auto board = BitBoard(fen);
-        cout << "=======================================\nPERFT TEST " << perft_test_counter++
-             << "\n"
-             << fen << "\n";
+        print("\nRunning Perft Test {}\n{}\n",perft_test_counter++,fen);
         int drafts_passed = 0;
         for (int idx = 0; idx < max_draft; idx++)
         {
@@ -86,25 +84,23 @@ void run_perft_test(int max_draft)
             {
                 perft = perft_search<side_t::black>(board, idx + 1);
             }
-            if (perft == counts.at(idx))
+            if (perft == correct_perfts.at(idx))
             {
-                cout << "\tPassed, Draft: " << idx + 1 << " | Correct Perft: " << perft << "\n";
+                print("\tPassed, Draft: {}\n",idx + 1);
                 drafts_passed++;
             }
             else
             {
-                cout << "\tFailed, Draft: " << idx + 1 << " | Correct Perft: " << counts.at(idx)
-                     << " | This Perft: " << perft << "\n";
+                print("\tFailed, Draft: {} | Correct Perft: | This Perft: {}\n",
+                    idx + 1, correct_perfts.at(idx), perft);
             }
         }
-        cout << "DRAFTS PASSED: " << drafts_passed << "/" << max_draft << "\n";
-        cout << "=======================================\n\n\n";
         if (drafts_passed == max_draft)
         {
             tests_passed++;
         }
     }
-    cout << "TESTS PASSED: " << tests_passed << "/" << 6 << "\n";
+    print("Pass Rate: {}/{}\n",tests_passed, perft_tests.size());
 }
 
 void test_puzzles(int count)
