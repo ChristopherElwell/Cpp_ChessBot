@@ -92,26 +92,26 @@ auto Engine::move_to_uci(const Move &mov, const BitBoard& board) -> string
     {
     case movType::QUIET:
     case movType::CAPTURE:
-    case movType::CASTLE_KINGSIDE:
-    case movType::CASTLE_QUEENSIDE:
+    case movType::CASTLE_kingside:
+    case movType::CASTLE_queenside:
         starting_sq = mov.mov1 & board[mov.pc1];
         ending_sq = mov.mov1 & ~board[mov.pc1];
-        out += data::SQUARES[__builtin_ctzll(starting_sq)];
-        out += data::SQUARES[__builtin_ctzll(ending_sq)];
+        out += square_coords[__builtin_ctzll(starting_sq)];
+        out += square_coords[__builtin_ctzll(ending_sq)];
         return out;
     case movType::PROMOTE:
         starting_sq = mov.mov1 & board[mov.pc1];
         ending_sq = mov.mov2;
-        out += data::SQUARES[__builtin_ctzll(starting_sq)];
-        out += data::SQUARES[__builtin_ctzll(ending_sq)];
-        out += data::PIECE_CODES[static_cast<size_t>(mov.pc2)];
+        out += square_coords[__builtin_ctzll(starting_sq)];
+        out += square_coords[__builtin_ctzll(ending_sq)];
+        out += piece_chars[static_cast<size_t>(mov.pc2)];
         return out;
     case movType::CAPTURE_PROMOTE:
         starting_sq = mov.mov1 & board[mov.pc1];
         ending_sq = mov.mov3;
-        out += data::SQUARES[__builtin_ctzll(starting_sq)];
-        out += data::SQUARES[__builtin_ctzll(ending_sq)];
-        out += data::PIECE_CODES[static_cast<size_t>(mov.pc3)];
+        out += square_coords[__builtin_ctzll(starting_sq)];
+        out += square_coords[__builtin_ctzll(ending_sq)];
+        out += piece_chars[static_cast<size_t>(mov.pc3)];
         return out;
     case movType::BOOK_END:
         return "BOOK END";
@@ -126,9 +126,9 @@ auto Engine::move_to_algebraic(const Move &move, BitBoard board) -> string
     const uint64_t to_pos = move.mov1 & ~board[move.pc1];
     const uint64_t from_pos = move.mov1 & ~to_pos;
     string out;
-    string destination = data::SQUARES[__builtin_ctzll(to_pos)];
-    string origin = data::SQUARES[__builtin_ctzll(from_pos)];
-    if (move.pc1 == Piece::WHITE_PAWN || move.pc1 == Piece::BLACK_PAWN)
+    string destination = square_coords[__builtin_ctzll(to_pos)];
+    string origin = square_coords[__builtin_ctzll(from_pos)];
+    if (move.pc1 == piece_t::white_pawn || move.pc1 == piece_t::black_pawn)
     {
         switch (move.type)
         {
@@ -139,14 +139,14 @@ auto Engine::move_to_algebraic(const Move &move, BitBoard board) -> string
             out = format("{}x{}", origin[0], destination);
             break;
         case movType::PROMOTE:
-            out = format("{}{}", destination, data::PIECE_CODES[static_cast<int>(move.pc2) % 6]);
+            out = format("{}{}", destination, piece_chars[static_cast<int>(move.pc2) % 6]);
             break;
         case movType::CAPTURE_PROMOTE:
-            out = format("{}{}", origin[0], data::SQUARES[__builtin_ctzll(move.mov2)],
-                         data::PIECE_CODES[static_cast<int>(move.pc3) % 6]);
+            out = format("{}{}", origin[0], square_coords[__builtin_ctzll(move.mov2)],
+                         piece_chars[static_cast<int>(move.pc3) % 6]);
             break;
-        case movType::CASTLE_KINGSIDE:
-        case movType::CASTLE_QUEENSIDE:
+        case movType::CASTLE_kingside:
+        case movType::CASTLE_queenside:
         default:
             return "Unknown";
             break;
@@ -157,16 +157,16 @@ auto Engine::move_to_algebraic(const Move &move, BitBoard board) -> string
         switch (move.type)
         {
         case movType::QUIET:
-            out = string(1, data::PIECE_CODES[static_cast<int>(move.pc1) % 6]) + destination;
+            out = string(1, piece_chars[static_cast<int>(move.pc1) % 6]) + destination;
             break;
         case movType::CAPTURE:
 
-            out = string(1, data::PIECE_CODES[static_cast<int>(move.pc1) % 6]) + "x" + destination;
+            out = string(1, piece_chars[static_cast<int>(move.pc1) % 6]) + "x" + destination;
             break;
-        case movType::CASTLE_KINGSIDE:
+        case movType::CASTLE_kingside:
             out = "O-O";
             break;
-        case movType::CASTLE_QUEENSIDE:
+        case movType::CASTLE_queenside:
             out = "O-O-O";
             break;
         case movType::CAPTURE_PROMOTE:
@@ -197,9 +197,9 @@ auto Engine::bitboard_to_string(const uint64_t &board) -> string {
       out += format("{} ",8 - (i / 8));
     }
     if ((board & (1ULL << (63 - i))) != 0) {
-      out += WHITE_SQ_CHAR;
+      out += white_sq_char;
     } else {
-      out += BLACK_SQ_CHAR;
+      out += black_sq_char;
     }
     if ((i + 1) % 8 == 0) {
       out += "\n";

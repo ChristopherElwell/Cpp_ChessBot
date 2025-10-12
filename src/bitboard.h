@@ -1,5 +1,4 @@
 #pragma once
-#include "data.h"
 #include <array>
 #include <cstdint>
 #include <string>
@@ -15,38 +14,33 @@ constexpr auto operator~(side_t side) noexcept -> side_t {
     return side == side_t::white ? side_t::black : side_t::white;
 }
 
-enum class Piece : uint8_t
+enum class piece_t : uint8_t
 {
-    WHITE_PAWN,
-    WHITE_KNIGHT,
-    WHITE_BISHOP,
-    WHITE_ROOK,
-    WHITE_QUEEN,
-    WHITE_KING,
-    BLACK_PAWN,
-    BLACK_KNIGHT,
-    BLACK_BISHOP,
-    BLACK_ROOK,
-    BLACK_QUEEN,
-    BLACK_KING,
-    WHITE_PCS,
-    BLACK_PCS,
-    ALL_PCS,
-    INFO,
-    PIECECOUNT
+    white_pawn,
+    white_knight,
+    white_bishop,
+    white_rook,
+    white_queen,
+    white_king,
+    black_pawn,
+    black_knight,
+    black_bishop,
+    black_rook,
+    black_queen,
+    black_king,
+    white_pcs,
+    black_pcs,
+    all_pcs,
+    info,
+    piece_count
 };
 
-inline auto pc_to_string(const Piece piece) -> std::string
-{
-    return data::PIECE_NAMES[static_cast<int>(piece)];
-}
-
-inline auto operator-(const Piece pc_a, const Piece pc_b) -> int
+inline auto operator-(const piece_t pc_a, const piece_t pc_b) -> int
 {
     return static_cast<int>(pc_a) - static_cast<int>(pc_b);
 }
 
-struct PieceRange
+struct piece_range
 {
   public:
     struct Iterator
@@ -55,7 +49,7 @@ struct PieceRange
         int value;
 
       public:
-        auto operator*() const -> Piece { return static_cast<Piece>(value); }
+        auto operator*() const -> piece_t { return static_cast<piece_t>(value); }
         auto operator++() -> Iterator &
         {
             ++value;
@@ -72,28 +66,28 @@ struct PieceRange
         return Iterator{end};
     }
 
-    PieceRange(Piece start, Piece stop) : start(start), stop(stop) {};
-    static auto Black() -> PieceRange { return PieceRange{Piece::BLACK_PAWN, Piece::BLACK_KING}; }
-    static auto White() -> PieceRange { return PieceRange{Piece::WHITE_PAWN, Piece::WHITE_KING}; }
-    static auto BlackNoKing() -> PieceRange
+    piece_range(piece_t start, piece_t stop) : start(start), stop(stop) {};
+    static auto Black() -> piece_range { return piece_range{piece_t::black_pawn, piece_t::black_king}; }
+    static auto White() -> piece_range { return piece_range{piece_t::white_pawn, piece_t::white_king}; }
+    static auto BlackNoKing() -> piece_range
     {
-        return PieceRange{Piece::BLACK_PAWN, Piece::BLACK_QUEEN};
+        return piece_range{piece_t::black_pawn, piece_t::black_queen};
     }
-    static auto WhiteNoKing() -> PieceRange
+    static auto WhiteNoKing() -> piece_range
     {
-        return PieceRange{Piece::WHITE_PAWN, Piece::WHITE_QUEEN};
+        return piece_range{piece_t::white_pawn, piece_t::white_queen};
     }
-    static auto all() -> PieceRange { return PieceRange{Piece::WHITE_PAWN, Piece::BLACK_KING}; }
+    static auto all() -> piece_range { return piece_range{piece_t::white_pawn, piece_t::black_king}; }
 
   private:
-    Piece start;
-    Piece stop;
+    piece_t start;
+    piece_t stop;
 };
 
 class BitBoard
 {
   private:
-    std::array<uint64_t, static_cast<int>(Piece::PIECECOUNT)> board{};
+    std::array<uint64_t, static_cast<int>(piece_t::piece_count)> board{};
     static constexpr uint64_t TURN_BIT = 0b10;
 
     static auto sq_from_name(char file, char rank) -> uint64_t;
@@ -103,10 +97,10 @@ class BitBoard
     BitBoard(const std::string &FEN);
     BitBoard();
     [[nodiscard]] auto draw() const -> std::string;
-    auto operator[](Piece piece) const -> uint64_t;
+    auto operator[](piece_t piece) const -> uint64_t;
     void apply_move(const Move &move);
     [[nodiscard]] auto whites_turn() const -> bool
     {
-        return (board[static_cast<int>(Piece::INFO)] & TURN_BIT) != 0;
+        return (board[static_cast<int>(piece_t::info)] & TURN_BIT) != 0;
     }
 };

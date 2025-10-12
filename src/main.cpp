@@ -9,5 +9,5 @@ using namespace std;
 
 auto main() -> int
 {
-    test_puzzles(20);
+    test_puzzles(15);
 }

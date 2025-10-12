@@ -5,38 +5,47 @@
 
 using namespace std;
 
+namespace {
+constexpr int mg_eg_piece_threshold = 24;
+
+template<piece_t piece>
+void evaluate_pc(const BitBoard& board, int& mg_eval, int& eg_eval, int& mg_to_eg_eval){
+    for (auto pc_bit : BitScan(board[piece]))
+    {
+        mg_eval += pc_sq_table::midgame<piece>[__builtin_ctzll(pc_bit)];
+        eg_eval += pc_sq_table::endgame<piece>[__builtin_ctzll(pc_bit)];
+        mg_to_eg_eval += pc_sq_table::mid_to_endgame_pc_val<piece>;
+    }
+}
+}
+
 auto evaluate(const BitBoard &board) -> int
 {
     int mg_eval = 0;
     int eg_eval = 0;
     int mg_to_eg_counter = 0;
-    int pos = 0;
 
-    for (auto piece : PieceRange::White())
-    {
-        for (auto pc_bit : BitScan(board[piece]))
-        {
-            mg_to_eg_counter += data::MG_EG_PCVALS[static_cast<int>(piece)];
-            pos = __builtin_ctzll(pc_bit);
-            mg_eval += data::MG_PCTBL[pos + (static_cast<int>(piece) << 6)];
-            eg_eval += data::EG_PCTBL[pos + (static_cast<int>(piece) << 6)];
-        }
-    }
-    for (auto piece : PieceRange::Black())
-    {
-        for (auto pc_bit : BitScan(board[piece]))
-        {
-            mg_to_eg_counter += data::MG_EG_PCVALS[static_cast<int>(piece)];
-            pos = __builtin_ctzll(pc_bit);
-            mg_eval -= data::MG_PCTBL[pos + (static_cast<int>(piece) << 6)];
-            eg_eval -= data::EG_PCTBL[pos + (static_cast<int>(piece) << 6)];
-        }
-    }
-    static const int max_piece_val = 24;
-    if (mg_to_eg_counter > max_piece_val)
+    evaluate_pc<piece_t::black_pawn>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::black_knight>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::black_bishop>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::black_rook>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::black_queen>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::black_king>(board, mg_eval, eg_eval, mg_to_eg_counter);
+
+    mg_eval = -mg_eval;
+    eg_eval = -eg_eval;
+
+    evaluate_pc<piece_t::white_pawn>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_knight>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_bishop>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_rook>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_queen>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_king>(board, mg_eval, eg_eval, mg_to_eg_counter);
+
+    if (mg_to_eg_counter > mg_eg_piece_threshold)
     {
         return mg_eval;
     }
-    return (mg_eval * mg_to_eg_counter + eg_eval * (max_piece_val - mg_to_eg_counter)) /
-           max_piece_val;
+    return (mg_eval * mg_to_eg_counter + eg_eval * (mg_eg_piece_threshold - mg_to_eg_counter)) /
+           mg_eg_piece_threshold;
 }

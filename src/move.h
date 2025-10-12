@@ -9,8 +9,8 @@ enum class movType : uint8_t
     CAPTURE,
     PROMOTE,
     CAPTURE_PROMOTE,
-    CASTLE_KINGSIDE,
-    CASTLE_QUEENSIDE,
+    CASTLE_kingside,
+    CASTLE_queenside,
     BOOK_END
 };
 
@@ -26,9 +26,9 @@ inline auto move_type_to_string(movType move_type) -> std::string
         return "Promote";
     case movType::CAPTURE_PROMOTE:
         return "Capture & Promote";
-    case movType::CASTLE_KINGSIDE:
+    case movType::CASTLE_kingside:
         return "Castle Kingside";
-    case movType::CASTLE_QUEENSIDE:
+    case movType::CASTLE_queenside:
         return "Castle Queenside";
     case movType::BOOK_END:
         return "Bookend";
@@ -44,11 +44,11 @@ constexpr auto operator-(const movType type_a, const movType type_b) -> int
 struct Move
 {
     // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
-    Piece pc1;
+    piece_t pc1;
     uint64_t mov1;
-    Piece pc2;
+    piece_t pc2;
     uint64_t mov2;
-    Piece pc3;
+    piece_t pc3;
     uint64_t mov3;
 
     uint64_t info;
@@ -57,7 +57,7 @@ struct Move
     auto operator=(const Move &) -> Move & = default;
 
     Move();
-    Move(Piece pc1, uint64_t mov1, Piece pc2, uint64_t mov2, Piece pc3, uint64_t mov3,
+    Move(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, piece_t pc3, uint64_t mov3,
          uint64_t info, movType type);
 
     ~Move() = default;
@@ -65,16 +65,16 @@ struct Move
     Move(Move &&) = default;
     auto operator=(Move &&) -> Move & = default;
 
-    static auto quiet(Piece pc1, uint64_t mov1, uint64_t info, uint64_t board_info) -> Move;
-    static auto capture(Piece pc1, uint64_t mov1, Piece pc2, uint64_t mov2, uint64_t info,
+    static auto quiet(piece_t pc1, uint64_t mov1, uint64_t info, uint64_t board_info) -> Move;
+    static auto capture(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
                         uint64_t board_info) -> Move;
-    static auto promote(Piece pc1, uint64_t mov1, Piece pc2, uint64_t mov2, uint64_t info,
+    static auto promote(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
                         uint64_t board_info) -> Move;
-    static auto promote_capture(Piece pc1, uint64_t mov1, Piece pc2, uint64_t mov2, Piece pc3,
+    static auto promote_capture(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, piece_t pc3,
                                 uint64_t mov3, uint64_t info, uint64_t board_info) -> Move;
-    static auto castle_kingside(Piece pc1, uint64_t mov1, Piece pc2, uint64_t mov2, uint64_t info,
+    static auto castle_kingside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
                                 uint64_t board_info) -> Move;
-    static auto castle_queenside(Piece pc1, uint64_t mov1, Piece pc2, uint64_t mov2, uint64_t info,
+    static auto castle_queenside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
                                  uint64_t board_info) -> Move;
     
     static auto copy(const Move &mov) -> Move;

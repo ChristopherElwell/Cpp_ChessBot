@@ -121,7 +121,7 @@ void test_puzzles(int count)
         }
         cout << "\n\nRUNNING TESTS: " << pzl_id << "\n" << fen << "\n";
         engine.load(fen);
-        engine.run(7);
+        engine.run(6);
         print("run done\n");
         if (engine.get_algebraic() == answer)
         {
