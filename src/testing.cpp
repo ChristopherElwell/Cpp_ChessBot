@@ -1,9 +1,4 @@
 #include "testing.h"
-#include "bitboard.h"
-#include "engine.h"
-#include "move.h"
-#include "move_gen.h"
-#include "private.h"
 
 #include <algorithm>
 #include <array>
@@ -16,10 +11,17 @@
 #include <utility>
 #include <vector>
 
+#include "bitboard.h"
+#include "engine.h"
+#include "move.h"
+#include "move_gen.h"
+#include "private.h"
+
 using namespace std;
 
-namespace {
-    const array<pair<string, array<uint64_t, 6>>, 6> perft_tests = {
+namespace
+{
+const array<pair<string, array<uint64_t, 6>>, 6> perft_tests = {
     make_pair("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
               array<uint64_t, 6>{20, 400, 8902, 197281, 4865609, 119060324}),
     make_pair("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
@@ -33,10 +35,10 @@ namespace {
     make_pair("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 "
               "10 ",
               array<uint64_t, 6>{46, 2079, 89890, 3894594, 164075551, 6923051137})};
-    auto read_csv(const string &filename) -> vector<vector<string>>;
-}
+auto read_csv(const string &filename) -> vector<vector<string>>;
+}  // namespace
 
-template<side_t side>
+template <side_t side>
 auto perft_search(BitBoard &board, int iter) -> uint64_t
 {
     if (iter == 0)
@@ -44,7 +46,7 @@ auto perft_search(BitBoard &board, int iter) -> uint64_t
         return 1;
     }
     uint64_t perft = 0;
-    
+
     auto move_gen = MoveGen(board);
     move_gen.gen<side>();
     for (const Move &move : move_gen)
@@ -75,10 +77,13 @@ void run_perft_test(int max_draft)
         int drafts_passed = 0;
         for (int idx = 0; idx < max_draft; idx++)
         {
-            uint64_t perft = 0; 
-            if (board.whites_turn()){
+            uint64_t perft = 0;
+            if (board.whites_turn())
+            {
                 perft = perft_search<side_t::white>(board, idx + 1);
-            } else {
+            }
+            else
+            {
                 perft = perft_search<side_t::black>(board, idx + 1);
             }
             if (perft == counts.at(idx))
@@ -88,9 +93,8 @@ void run_perft_test(int max_draft)
             }
             else
             {
-                cout << "\tFailed, Draft: " << idx + 1
-                     << " | Correct Perft: " << counts.at(idx) << " | This Perft: " << perft
-                     << "\n";
+                cout << "\tFailed, Draft: " << idx + 1 << " | Correct Perft: " << counts.at(idx)
+                     << " | This Perft: " << perft << "\n";
             }
         }
         cout << "DRAFTS PASSED: " << drafts_passed << "/" << max_draft << "\n";
@@ -112,9 +116,9 @@ void test_puzzles(int count)
     count = min(count, 300);
     for (auto pzl : pzls)
     {
-        string& fen = pzl[0];
-        string& answer = pzl[1];
-        string& pzl_id = pzl[2];
+        string &fen = pzl[0];
+        string &answer = pzl[1];
+        string &pzl_id = pzl[2];
         if (idx++ >= count)
         {
             break;
@@ -166,4 +170,4 @@ auto read_csv(const string &filename) -> vector<vector<string>>
 
     return result;
 }
-} // namespace
+}  // namespace

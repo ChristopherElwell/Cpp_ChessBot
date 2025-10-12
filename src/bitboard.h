@@ -5,12 +5,14 @@
 
 struct Move;
 
-enum class side_t : uint8_t {
-  white,
-  black
+enum class side_t : uint8_t
+{
+    white,
+    black
 };
 
-constexpr auto operator~(side_t side) noexcept -> side_t {
+constexpr auto operator~(side_t side) noexcept -> side_t
+{
     return side == side_t::white ? side_t::black : side_t::white;
 }
 
@@ -42,13 +44,13 @@ inline auto operator-(const piece_t pc_a, const piece_t pc_b) -> int
 
 struct piece_range
 {
-  public:
+   public:
     struct Iterator
     {
-      private:
+       private:
         int value;
 
-      public:
+       public:
         auto operator*() const -> piece_t { return static_cast<piece_t>(value); }
         auto operator++() -> Iterator &
         {
@@ -67,8 +69,14 @@ struct piece_range
     }
 
     piece_range(piece_t start, piece_t stop) : start(start), stop(stop) {};
-    static auto Black() -> piece_range { return piece_range{piece_t::black_pawn, piece_t::black_king}; }
-    static auto White() -> piece_range { return piece_range{piece_t::white_pawn, piece_t::white_king}; }
+    static auto Black() -> piece_range
+    {
+        return piece_range{piece_t::black_pawn, piece_t::black_king};
+    }
+    static auto White() -> piece_range
+    {
+        return piece_range{piece_t::white_pawn, piece_t::white_king};
+    }
     static auto BlackNoKing() -> piece_range
     {
         return piece_range{piece_t::black_pawn, piece_t::black_queen};
@@ -77,22 +85,25 @@ struct piece_range
     {
         return piece_range{piece_t::white_pawn, piece_t::white_queen};
     }
-    static auto all() -> piece_range { return piece_range{piece_t::white_pawn, piece_t::black_king}; }
+    static auto all() -> piece_range
+    {
+        return piece_range{piece_t::white_pawn, piece_t::black_king};
+    }
 
-  private:
+   private:
     piece_t start;
     piece_t stop;
 };
 
 class BitBoard
 {
-  private:
+   private:
     std::array<uint64_t, static_cast<int>(piece_t::piece_count)> board{};
     static constexpr uint64_t TURN_BIT = 0b10;
 
     static auto sq_from_name(char file, char rank) -> uint64_t;
 
-  public:
+   public:
     static auto start_position() -> BitBoard;
     BitBoard(const std::string &FEN);
     BitBoard();

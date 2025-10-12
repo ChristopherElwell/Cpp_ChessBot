@@ -4,7 +4,8 @@
 
 #include "bitboard.h"
 
-namespace pc_sq_table {
+namespace pc_sq_table
+{
 
 template <piece_t piece>
 inline constexpr int mid_to_endgame_pc_val = 0;
@@ -267,7 +268,8 @@ inline constexpr std::array<int, 64> endgame<piece_t::black_king> = {
 };
 
 }  // namespace pc_sq_table
-namespace masks {
+namespace masks
+{
 // RANK AND files
 static constexpr uint64_t rank_1 = 0x00000000000000FF;
 static constexpr uint64_t rank_2 = 0x000000000000FF00;
@@ -332,7 +334,7 @@ inline constexpr std::array<uint64_t, 15> diag_down = {0,
 static constexpr uint64_t sq_A8 = 0x8000000000000000;
 
 static const std::array<const char *, 12> piece_emojis = {"♙", "♘", "♗", "♖", "♕", "♔",
-                                                      "♟", "♞", "♝", "♜", "♛", "♚"};
+                                                          "♟", "♞", "♝", "♜", "♛", "♚"};
 
 // helpers
 const std::array<const char *, 64> square_coords = {
@@ -353,7 +355,8 @@ const std::array<const char, 12> piece_chars = {
 static const char *const black_sq_char = "⬛";
 static const char *const white_sq_char = "⬜";
 
-namespace castling {
+namespace castling
+{
 // CASTLING MASKS
 static constexpr uint64_t white_kingside_space = 0b110ULL;
 static constexpr uint64_t white_queenside_space = 0b01110000ULL;
@@ -371,8 +374,8 @@ static constexpr uint64_t black_kingside_right = 0b1ULL << 56;
 static constexpr uint64_t black_queenside_right = 0b10000000ULL << 56;
 }  // namespace castling
 
-
-namespace move_masks{
+namespace move_masks
+{
 // move gen
 const std::array<uint64_t, 64> king_moves = {
     0x0000000000000302, 0x0000000000000705, 0x0000000000000e0a, 0x0000000000001c14,
@@ -445,4 +448,4 @@ const std::array<uint8_t, 768> sliding_moves = {
     0x6,  0x5,  0x1b, 0x14, 0x2c, 0x50, 0xa0, 0x40, 0x2, 0x5,  0x1a, 0x14, 0x2c, 0x50, 0xa0, 0x40,
     0xe,  0xd,  0xb,  0x17, 0x28, 0x50, 0xa0, 0x40, 0x2, 0xd,  0xa,  0x16, 0x28, 0x50, 0xa0, 0x40,
     0x6,  0x5,  0xb,  0x14, 0x28, 0x50, 0xa0, 0x40, 0x2, 0x5,  0xa,  0x14, 0x28, 0x50, 0xa0, 0x40};
-}
+}  // namespace move_masks

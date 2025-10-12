@@ -1,17 +1,17 @@
 #pragma once
-#include "bitboard.h"
-#include "data.h"
-#include "move.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
 
+#include "bitboard.h"
+#include "data.h"
+#include "move.h"
 
 static constexpr int moves_ARRAY_LENGTH = 230;
 
 class MoveGen
 {
-  private:
+   private:
     std::array<Move, moves_ARRAY_LENGTH> m_movs;
     size_t m_idx = 0;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
@@ -54,7 +54,7 @@ class MoveGen
 
     static auto compare_moves(const Move &mov_a, const Move &mov_b) -> bool;
 
-  public:
+   public:
     [[nodiscard]]
     auto length() const -> int
     {
@@ -66,20 +66,23 @@ class MoveGen
     [[nodiscard]] auto is_white_king_in_check() const -> bool;
     [[nodiscard]] auto is_black_king_in_check() const -> bool;
 
-    template<side_t side>
-    [[nodiscard]] constexpr auto is_king_in_check() const -> bool{
-      if constexpr (side == side_t::white) {
-        return is_white_king_in_check();
-      } else {
-          return is_black_king_in_check();
-          
-      }
+    template <side_t side>
+    [[nodiscard]] constexpr auto is_king_in_check() const -> bool
+    {
+        if constexpr (side == side_t::white)
+        {
+            return is_white_king_in_check();
+        }
+        else
+        {
+            return is_black_king_in_check();
+        }
     }
 
     auto get_white_attackers(const BitBoard &board) -> uint64_t;
     auto get_black_attackers(const BitBoard &board) -> uint64_t;
 
-    template<side_t side>
+    template <side_t side>
     void gen();
 
     MoveGen(const BitBoard &board);

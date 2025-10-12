@@ -1,7 +1,8 @@
 #pragma once
-#include "bitboard.h"
 #include <cstdint>
 #include <string>
+
+#include "bitboard.h"
 
 enum class movType : uint8_t
 {
@@ -18,20 +19,20 @@ inline auto move_type_to_string(movType move_type) -> std::string
 {
     switch (move_type)
     {
-    case movType::QUIET:
-        return "Quiet";
-    case movType::CAPTURE:
-        return "Capture";
-    case movType::PROMOTE:
-        return "Promote";
-    case movType::CAPTURE_PROMOTE:
-        return "Capture & Promote";
-    case movType::CASTLE_kingside:
-        return "Castle Kingside";
-    case movType::CASTLE_queenside:
-        return "Castle Queenside";
-    case movType::BOOK_END:
-        return "Bookend";
+        case movType::QUIET:
+            return "Quiet";
+        case movType::CAPTURE:
+            return "Capture";
+        case movType::PROMOTE:
+            return "Promote";
+        case movType::CAPTURE_PROMOTE:
+            return "Capture & Promote";
+        case movType::CASTLE_kingside:
+            return "Castle Kingside";
+        case movType::CASTLE_queenside:
+            return "Castle Queenside";
+        case movType::BOOK_END:
+            return "Bookend";
     }
     return "Unknown";
 }
@@ -72,11 +73,11 @@ struct Move
                         uint64_t board_info) -> Move;
     static auto promote_capture(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, piece_t pc3,
                                 uint64_t mov3, uint64_t info, uint64_t board_info) -> Move;
-    static auto castle_kingside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
-                                uint64_t board_info) -> Move;
-    static auto castle_queenside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
-                                 uint64_t board_info) -> Move;
-    
+    static auto castle_kingside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2,
+                                uint64_t info, uint64_t board_info) -> Move;
+    static auto castle_queenside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2,
+                                 uint64_t info, uint64_t board_info) -> Move;
+
     static auto copy(const Move &mov) -> Move;
     [[nodiscard]] auto to_string() const -> std::string;
 };

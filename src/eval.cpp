@@ -1,15 +1,18 @@
 #include "eval.h"
+
 #include "bitboard.h"
 #include "bitscan.h"
 #include "data.h"
 
 using namespace std;
 
-namespace {
+namespace
+{
 constexpr int mg_eg_piece_threshold = 24;
 
-template<piece_t piece>
-void evaluate_pc(const BitBoard& board, int& mg_eval, int& eg_eval, int& mg_to_eg_eval){
+template <piece_t piece>
+void evaluate_pc(const BitBoard& board, int& mg_eval, int& eg_eval, int& mg_to_eg_eval)
+{
     for (auto pc_bit : BitScan(board[piece]))
     {
         mg_eval += pc_sq_table::midgame<piece>[__builtin_ctzll(pc_bit)];
@@ -17,9 +20,9 @@ void evaluate_pc(const BitBoard& board, int& mg_eval, int& eg_eval, int& mg_to_e
         mg_to_eg_eval += pc_sq_table::mid_to_endgame_pc_val<piece>;
     }
 }
-}
+}  // namespace
 
-auto evaluate(const BitBoard &board) -> int
+auto evaluate(const BitBoard& board) -> int
 {
     int mg_eval = 0;
     int eg_eval = 0;

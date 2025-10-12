@@ -5,11 +5,8 @@
 
 using namespace std;
 
-namespace data {
-
-
-
-
-} // namespace masks
+namespace data
+{
+}  // namespace data
 
 // clang-format on
