@@ -1,11 +1,8 @@
-#include <iostream>
-#include <print>
-
-#include "bitboard.h"
-#include "control.h"
-#include "move_gen.h"
-#include "testing.h"
+#include "engine.h"
 
 using namespace std;
 
-auto main() -> int { test_puzzles(15); }
+auto main() -> int { 
+    Engine engine;
+    engine.uci_loop();
+}

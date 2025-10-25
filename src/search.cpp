@@ -1,14 +1,7 @@
-#include "search.h"
-
 #include <algorithm>
-#include <array>
-#include <climits>
-#include <iostream>
 #include <memory>
-#include <print>
 
 #include "bitboard.h"
-#include "data.h"
 #include "engine.h"
 #include "eval.h"
 #include "move.h"
@@ -49,11 +42,29 @@ constexpr auto no_moves_eval(const MoveGen &move_gen, int iter) noexcept -> int
 }
 }  // namespace
 
+template <side_t side>
+void Engine::search_async(pair<int,unique_ptr<const result_t>>& result, BitBoard board, atomic_bool& b_stop) {
+    pair<int,unique_ptr<const result_t>> temp_result = {init_eval<side>, nullptr};
+    for (int depth = 1; !b_stop; depth++)
+    {
+        temp_result = search<side>(
+            board, depth, numeric_limits<int>::min(), numeric_limits<int>::max(), b_stop);
+        
+        if (!b_stop && temp_result.second) {
+            result = std::move(temp_result);
+        }
+    }
+}
+
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 template <side_t side>
-auto Engine::search(BitBoard &board, int iter, int alpha, int beta)
+auto Engine::search(BitBoard &board, int iter, int alpha, int beta, atomic_bool& b_stop)
     -> pair<int, unique_ptr<result_t>>
 {
+    // instantly stop searching and cleanup
+    if (b_stop){
+        return {init_eval<~side>, nullptr};
+    }
     // if end of iteration, return evaluation of board
     if (iter == 0)
     {
@@ -76,7 +87,7 @@ auto Engine::search(BitBoard &board, int iter, int alpha, int beta)
             continue;
         }
 
-        auto [eval, child_result] = search<~side>(board, iter - 1, alpha, beta);
+        auto [eval, child_result] = search<~side>(board, iter - 1, alpha, beta,b_stop);
         board.apply_move(move);
 
         if constexpr (side == side_t::white)
@@ -116,7 +127,9 @@ auto Engine::search(BitBoard &board, int iter, int alpha, int beta)
     return {best_eval, std::move(p_result)};
 }
 
-template auto Engine::search<side_t::white>(BitBoard &, int, int, int)
+template void Engine::search_async<side_t::white>(pair<int,unique_ptr<const result_t>>& result, BitBoard board, atomic_bool& b_stop);
+template void Engine::search_async<side_t::black>(pair<int,unique_ptr<const result_t>>& result, BitBoard board, atomic_bool& b_stop);
+template auto Engine::search<side_t::white>(BitBoard &, int, int, int, atomic_bool& b_stop)
     -> std::pair<int, std::unique_ptr<result_t>>;
-template auto Engine::search<side_t::black>(BitBoard &, int, int, int)
+template auto Engine::search<side_t::black>(BitBoard &, int, int, int, atomic_bool& b_stop)
     -> std::pair<int, std::unique_ptr<result_t>>;
