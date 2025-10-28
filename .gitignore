@@ -9,6 +9,7 @@
 *.log
 *.json
 
+# Testing data, not mine
 /testing/stockfish/
 /testing/testing_data/
 /build/
@@ -26,10 +27,5 @@ private.h
 *.vcxproj*
 *.DS_Store
 
-# OneDrive metadata (since you're using OneDrive)
-*.lnk
-desktop.ini
-Thumbs.db
-
-game.py
-.clang-tidy
+# Clang-tidy script by LLVM
+run-clang-tidy.py
