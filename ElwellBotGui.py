@@ -1,3 +1,5 @@
+from pathlib import Path
+import sys
 import subprocess
 import chess
 import tkinter as tk
@@ -9,15 +11,15 @@ import threading
 
 colours = ['#DCE6C9','#BCC6A9','#FCF6E9']
 
-BUILDS_DIR = "out/build/bin/Release"
 SRC_DIR = "src"
 BOT_FILE = os.path.join(BUILDS_DIR, "ElwellBot.exe")
 
 class window(tk.Tk):
     # Main window constructor
-    def __init__(self):
+    def __init__(self, bot_dir):
         super().__init__()
-        self.bot = start_bot()
+        
+        self.bot = start_bot(bot_dir)
         self.bot_thinking = False
         
         size = 500
@@ -210,15 +212,15 @@ def call_bot(process, messages):
         return None
 
 # Starts the bot application, and checks if its ready
-def start_bot():
+def start_bot(bot_dir):
     process = subprocess.Popen(
-        BOT_FILE, 
+        bot_dir, 
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, 
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
-        cwd=BUILDS_DIR
+        cwd= Path(bot_dir).parent
     )
     time.sleep(1)
     
@@ -228,5 +230,11 @@ def start_bot():
     return process
 
 if __name__ == "__main__":
-    w = window()
+    if len(sys.argv) < 2:
+        print("Usage: python ElwellBotGui.py <bot_dir>")
+        sys.exit(1)
+    
+    bot_dir = sys.argv[1]
+    
+    w = window(bot_dir)
     w.mainloop()
