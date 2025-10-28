@@ -1,0 +1,107 @@
+---
+Checks:
+  bugprone-*,
+  cppcoreguidelines-*,
+  misc-*,
+  modernize-*,
+  readability-*,
+  performance-*,
+  -cppcoreguidelines-pro-type-vararg,
+  -misc-no-recursion,
+  -bugprone-easily-swappable-parameters,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+
+WarningsAsErrors: '*'
+FormatStyle: google
+CheckOptions:
+  # Numbers considered non-magical
+  - key: cppcoreguidelines-avoid-magic-numbers.IgnorePowersOf2IntegerValues
+    value: "true"
+  - key: cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues
+    value: >
+      0; 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 16; 100; 127; 128; 255; 1000
+  - key: cppcoreguidelines-avoid-magic-numbers.IgnoredFloatingPointValues
+    value: >
+      0.0; 0.01; 0.001; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0; 9.0;
+      10.0; 16.0; 100.0; 127.0; 128.0; 255.0; 256.0; 1000.0;
+      1.0e6; 1.0e9; 1.0e-6; 1.0e-9
+  - key: readability-magic-numbers.IgnoredIntegerValues
+    value: >
+      0; 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 16; 100; 127; 128; 255; 256; 1000
+  - key: readability-magic-numbers.IgnoredFloatingPointValues
+    value: >
+      0.0; 0.01; 0.001; 0.5; 1.0; 2.0; 3.0; 4.0; 5.0; 6.0; 7.0; 8.0; 9.0;
+      10.0; 16.0; 100.0; 127.0; 128.0; 255.0; 256; 1000.0;
+      1.0e6; 1.0e9; 1.0e-6; 1.0e-9
+
+  # Use snake case for all variable names, functions names, etc.
+  - key: readability-identifier-naming.AbstractClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassMethodCase
+    value: lower_case
+  - key:  readability-identifier-naming.ConstexprVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.EnumCase
+    value: lower_case
+  - key: readability-identifier-naming.EnumValueCase
+    value: lower_case
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberCase
+    value: lower_case
+  - key: readability-identifier-naming.MethodCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMethodCase
+    value: lower_case
+  - key: readability-identifier-naming.ProtectedMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.ProtectedMethodCase
+    value: lower_case
+  - key: readability-identifier-naming.PublicMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PublicMethodCase
+    value: lower_case
+  - key: readability-identifier-naming.StructCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+
+  # ... except for macros, which are snake case in all caps
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+  # ... and template parameters, i.e <typename T>
+  - key: readability-identifier-naming.TemplateParameterCase
+    value: CamelCase
+
+  # Implicit pointer and integer bool conversions
+  - key: readability-implicit-bool-conversion.AllowIntegerConditions
+    value: true
+  - key: readability-implicit-bool-conversion.AllowPointerConditions
+    value: true
+
+  # Add p_, b_, and m_ prefixes
+  - key: readability-identifier-naming.GlobalConstantPointerPrefix
+    value: 'p_'
+  - key: readability-identifier-naming.GlobalPointerPrefix
+    value: 'p_'
+  - key: readability-identifier-naming.LocalConstantPointerPrefix
+    value: 'p_'
+  - key: readability-identifier-naming.LocalPointerPrefix
+    value: 'p_'
+
+  - key: readability-identifier-naming.ClassMemberPrefix
+    value: 'm_'
+  - key: readability-identifier-naming.PrivateMemberPrefix
+    value: 'm_'
+  - key: readability-identifier-naming.ProtectedMemberPrefix
+    value: 'm_'
