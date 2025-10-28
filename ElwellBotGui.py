@@ -12,7 +12,6 @@ import threading
 colours = ['#DCE6C9','#BCC6A9','#FCF6E9']
 
 SRC_DIR = "src"
-BOT_FILE = os.path.join(BUILDS_DIR, "ElwellBot.exe")
 
 class window(tk.Tk):
     # Main window constructor
@@ -149,7 +148,7 @@ class window(tk.Tk):
         self.bot_thinking = True
         self.update_status("Bot thinking...", "yellow")
         
-        print(f"Getting best move in pos:\n\t{fen}")
+        print(f"Getting best move for pos:\n\t{fen}")
         bot_return = call_bot(bot, ["go", fen, "time", str(self.time_select.get())])
         
         self.after(0, self.handle_bot_response, bot_return)
