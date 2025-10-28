@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -38,7 +39,7 @@ const array<pair<string, array<uint64_t, 6>>, 6> perft_tests = {
 auto read_csv(const string &filename) -> vector<vector<string>>;
 }  // namespace
 
-template <side_t side>
+template <side_t Side>
 auto perft_search(BitBoard &board, int iter) -> uint64_t
 {
     if (iter == 0)
@@ -48,17 +49,17 @@ auto perft_search(BitBoard &board, int iter) -> uint64_t
     uint64_t perft = 0;
 
     auto move_gen = MoveGen(board);
-    move_gen.gen<side>();
+    move_gen.gen<Side>();
     for (const Move &move : move_gen)
     {
         board.apply_move(move);
         // check if move leaves white king in check
-        if (move_gen.is_king_in_check<side>())
+        if (move_gen.is_king_in_check<Side>())
         {
             board.apply_move(move);
             continue;
         }
-        perft += perft_search<~side>(board, iter - 1);
+        perft += perft_search<~Side>(board, iter - 1);
         board.apply_move(move);
     }
     return perft;
@@ -71,7 +72,7 @@ void run_perft_test(int max_draft)
     for (auto [fen, correct_perfts] : perft_tests)
     {
         auto board = BitBoard(fen);
-        print("\nRunning Perft Test {}\n{}\n",perft_test_counter++,fen);
+        print("\nRunning Perft Test {}\n{}\n", perft_test_counter++, fen);
         int drafts_passed = 0;
         for (int idx = 0; idx < max_draft; idx++)
         {
@@ -86,13 +87,13 @@ void run_perft_test(int max_draft)
             }
             if (perft == correct_perfts.at(idx))
             {
-                print("\tPassed, Draft: {}\n",idx + 1);
+                print("\tPassed, Draft: {}\n", idx + 1);
                 drafts_passed++;
             }
             else
             {
-                print("\tFailed, Draft: {} | Correct Perft: | This Perft: {}\n",
-                    idx + 1, correct_perfts.at(idx), perft);
+                print("\tFailed, Draft: {} | Correct Perft: | This Perft: {}\n", idx + 1,
+                      correct_perfts.at(idx), perft);
             }
         }
         if (drafts_passed == max_draft)
@@ -100,21 +101,21 @@ void run_perft_test(int max_draft)
             tests_passed++;
         }
     }
-    print("Pass Rate: {}/{}\n",tests_passed, perft_tests.size());
+    print("Pass Rate: {}/{}\n", tests_passed, perft_tests.size());
 }
 
-void test_puzzles(int count)
+void test_puzzles(size_t count)
 {
     const vector<vector<string>> pzls = read_csv(priv::WIN_AT_CHESS_FILE);
-    int idx = 0;
+    size_t idx = 0;
     int passed = 0;
     Engine engine;
-    count = min(count, 300);
+    count = min(count, pzls.size());
     for (auto pzl : pzls)
     {
-        string &fen = pzl[0];
-        string &answer = pzl[1];
-        string &pzl_id = pzl[2];
+        const string &fen = pzl[0];
+        const string &answer = pzl[1];
+        const string &pzl_id = pzl[2];
         if (idx++ >= count)
         {
             break;

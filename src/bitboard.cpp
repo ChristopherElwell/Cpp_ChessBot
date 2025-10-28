@@ -23,7 +23,7 @@ auto BitBoard::operator[](piece_t piece) const -> uint64_t
 
 auto BitBoard::start_position() -> BitBoard { return {starting_pos}; }
 
-BitBoard::BitBoard(const string &FEN)
+BitBoard::BitBoard(const string &fen)
 {
     int sqr = 0;
     unordered_map<char, piece_t> piece_t_code_map = {
@@ -33,7 +33,7 @@ BitBoard::BitBoard(const string &FEN)
         {'r', piece_t::black_rook}, {'q', piece_t::black_queen},  {'k', piece_t::black_king},
     };
     int idx = 0;
-    for (const char piece : FEN)
+    for (const char piece : fen)
     {
         switch (piece)
         {
@@ -49,7 +49,8 @@ BitBoard::BitBoard(const string &FEN)
             case 'r':
             case 'q':
             case 'k':
-                board[static_cast<int>(piece_t_code_map[piece])] |= 1LL << (63 - sqr);
+                board[static_cast<int>(piece_t_code_map[piece])] |=
+                    1LL << (BitBoard::num_squares - 1 - sqr);
                 sqr++;
                 break;
             case '1':
@@ -75,15 +76,15 @@ BitBoard::BitBoard(const string &FEN)
     }
 
     idx++;
-    if (FEN[idx] == 'w')
+    if (fen[idx] == 'w')
     {
         board[static_cast<int>(piece_t::info)] |= TURN_BIT;
     }
     idx += 2;
 
-    for (; FEN[idx] != ' '; idx++)
+    for (; fen[idx] != ' '; idx++)
     {
-        switch (FEN[idx])
+        switch (fen[idx])
         {
             case 'K':
                 board[static_cast<int>(piece_t::info)] |= castling::white_kingside_right;
@@ -104,10 +105,10 @@ BitBoard::BitBoard(const string &FEN)
 
     idx++;
 
-    if (FEN[idx] != '-')
+    if (fen[idx] != '-')
     {
-        const char file = FEN[idx++];
-        const char rank = FEN[idx++];
+        const char file = fen[idx++];
+        const char rank = fen[idx++];
         board[static_cast<int>(piece_t::info)] |= sq_from_name(file, rank);
     }
 
@@ -159,13 +160,13 @@ auto BitBoard::draw() const -> string
     const string light = "\033[48;5;187m";
     const string dark = "\033[48;5;108m";
     string out = "8 ";
-    for (int i = 0; i < 64; i++)
+    for (int i = 0; i < BitBoard::num_squares; i++)
     {
         out += ((i % 8 + i / 8) % 2 == 0 ? light : dark);
         int piece_found = 0;
         for (const auto piece : piece_range::all())
         {
-            if ((operator[](piece) & (1ULL << (63 - i))) != 0)
+            if ((operator[](piece) & (1ULL << (BitBoard::num_squares - 1 - i))) != 0)
             {
                 out += piece_emojis[static_cast<int>(piece)];
                 out += " ";
@@ -177,7 +178,7 @@ auto BitBoard::draw() const -> string
         {
             out += "  ";
         }
-        if ((i + 1) % 8 == 0 && i != 63)
+        if ((i + 1) % 8 == 0 && i != BitBoard::num_squares - 1)
         {
             out += format("{}\n{} ", reset, 8 - ((i + 1) / 8));
         }

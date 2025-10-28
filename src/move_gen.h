@@ -61,7 +61,8 @@ class MoveGen
         return static_cast<int>(m_end_idx);
     }
 
-    auto get(size_t idx) -> Move &;
+    auto at(size_t idx) -> Move &;
+    [[nodiscard]] auto at(size_t idx) const -> const Move &;
 
     [[nodiscard]] auto is_white_king_in_check() const -> bool;
     [[nodiscard]] auto is_black_king_in_check() const -> bool;

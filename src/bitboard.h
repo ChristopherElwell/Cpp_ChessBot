@@ -104,6 +104,8 @@ class BitBoard
     static auto sq_from_name(char file, char rank) -> uint64_t;
 
    public:
+    static constexpr int num_squares = 64;
+
     static auto start_position() -> BitBoard;
     BitBoard(const std::string &FEN);
     BitBoard();

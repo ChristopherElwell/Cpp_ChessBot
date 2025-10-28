@@ -8,6 +8,7 @@
 #include "bitboard.h"
 #include "bitscan.h"
 #include "data.h"
+#include "move.h"
 
 using namespace std;
 
@@ -18,16 +19,17 @@ auto MoveGen::get_white_rook_attacks(const uint64_t rook) const -> uint64_t
     const int file = pos & 7;
     const int base = pos & ~7;
     uint64_t attacks =
-        (uint64_t)(move_masks::sliding_moves[(((m_board[piece_t::all_pcs] >> (base + 1)) & 0x3F)
+        (uint64_t)(move_masks::sliding_moves[(((m_board[piece_t::all_pcs] >> (base + 1)) &
+                                               move_masks::sliding_moves_mask)
                                               << 3) +
                                              file])
         << base;
 
-    const uint64_t file_isolated = m_board[piece_t::all_pcs] << (8 - file) & masks::file_H;
+    const uint64_t file_isolated = m_board[piece_t::all_pcs] << (8 - file) & masks::file_h;
     const uint64_t rotated = (file_isolated * masks::anti_diag) >> 56;
     const uint64_t index = (rotated * 8 + (7 - rank)) & 0x1ff;
     const uint64_t moves_rotated = ((uint64_t)move_masks::sliding_moves[index]) * masks::anti_diag;
-    attacks |= (moves_rotated & masks::file_A) >> (7 - file);
+    attacks |= (moves_rotated & masks::file_a) >> (7 - file);
 
     return attacks & ~m_board[piece_t::white_pcs];
 }
@@ -40,16 +42,17 @@ auto MoveGen::get_black_rook_attacks(const uint64_t rook) const -> uint64_t
     const int base = pos & ~7;
 
     uint64_t attacks =
-        (uint64_t)(move_masks::sliding_moves[(((m_board[piece_t::all_pcs] >> (base + 1)) & 0x3F)
+        (uint64_t)(move_masks::sliding_moves[(((m_board[piece_t::all_pcs] >> (base + 1)) &
+                                               move_masks::sliding_moves_mask)
                                               << 3) +
                                              file])
         << base;
 
-    const uint64_t file_isolated = m_board[piece_t::all_pcs] << (8 - file) & masks::file_H;
+    const uint64_t file_isolated = m_board[piece_t::all_pcs] << (8 - file) & masks::file_h;
     const uint64_t rotated = (file_isolated * masks::anti_diag) >> 56;
     const uint64_t index = (rotated * 8 + (7 - rank)) & 0x1ff;
     const uint64_t moves_rotated = ((uint64_t)move_masks::sliding_moves[index]) * masks::anti_diag;
-    attacks |= (moves_rotated & masks::file_A) >> (7 - file);
+    attacks |= (moves_rotated & masks::file_a) >> (7 - file);
 
     return attacks & ~m_board[piece_t::black_pcs];
 }
@@ -75,7 +78,7 @@ auto MoveGen::get_white_bishop_attacks(const uint64_t bishop) const -> uint64_t
 
     temp = pcs_behind & up_ray;
     mask = static_cast<int>(temp == 0) - 1;
-    first_pc = (sq_A8 >> __builtin_clzll(temp)) & mask;
+    first_pc = (sq_a8 >> __builtin_clzll(temp)) & mask;
     spots |= (bishop - 1) & ~((first_pc - 1) | first_pc) & up_ray;
     spots |= first_pc & m_board[piece_t::black_pcs];
     spots |= up_ray & (bishop - 1) & ~mask;
@@ -85,7 +88,7 @@ auto MoveGen::get_white_bishop_attacks(const uint64_t bishop) const -> uint64_t
 
     temp = pcs_behind & down_ray;
     mask = static_cast<int>(temp == 0) - 1;
-    first_pc = (sq_A8 >> __builtin_clzll(temp)) & mask;
+    first_pc = (sq_a8 >> __builtin_clzll(temp)) & mask;
     spots |= (bishop - 1) & ~((first_pc - 1) | first_pc) & down_ray;
     spots |= first_pc & m_board[piece_t::black_pcs];
     spots |= down_ray & (bishop - 1) & ~mask;
@@ -113,7 +116,7 @@ auto MoveGen::get_black_bishop_attacks(const uint64_t bishop) const -> uint64_t
 
     temp = pcs_behind & up_ray;
     mask = static_cast<int>(temp == 0) - 1;
-    first_pc = (sq_A8 >> __builtin_clzll(temp)) & mask;
+    first_pc = (sq_a8 >> __builtin_clzll(temp)) & mask;
     spots |= (bishop - 1) & ~((first_pc - 1) | first_pc) & up_ray;
     spots |= first_pc & m_board[piece_t::white_pcs];
     spots |= up_ray & (bishop - 1) & ~mask;
@@ -123,7 +126,7 @@ auto MoveGen::get_black_bishop_attacks(const uint64_t bishop) const -> uint64_t
 
     temp = pcs_behind & down_ray;
     mask = static_cast<int>(temp == 0) - 1;
-    first_pc = (sq_A8 >> __builtin_clzll(temp)) & mask;
+    first_pc = (sq_a8 >> __builtin_clzll(temp)) & mask;
     spots |= (bishop - 1) & ~((first_pc - 1) | first_pc) & down_ray;
     spots |= first_pc & m_board[piece_t::white_pcs];
     spots |= down_ray & (bishop - 1) & ~mask;
@@ -230,7 +233,7 @@ void MoveGen::get_white_pawn_moves()
 
     const uint64_t en_passent_take_left =
         ((m_board[piece_t::white_pawn] << 9) & m_board[piece_t::info] & ~masks::rank_1 &
-         ~masks::file_H);
+         ~masks::file_h);
     if (en_passent_take_left != 0)
     {
         m_movs[m_idx++] = Move::capture(
@@ -240,7 +243,7 @@ void MoveGen::get_white_pawn_moves()
 
     const uint64_t en_passent_take_right =
         ((m_board[piece_t::white_pawn] << 7) & m_board[piece_t::info] & ~masks::rank_1 &
-         ~masks::file_A);
+         ~masks::file_a);
     if (en_passent_take_right != 0)
     {
         m_movs[m_idx++] = Move::capture(
@@ -287,7 +290,7 @@ void MoveGen::get_black_pawn_moves()
     black_pawn_taking_moves(7);
     const uint64_t en_passent_take_left =
         ((m_board[piece_t::black_pawn] >> 7) & m_board[piece_t::info] & ~masks::rank_1 &
-         ~masks::file_H);
+         ~masks::file_h);
     if (en_passent_take_left != 0)
     {
         m_movs[m_idx++] = Move::capture(
@@ -297,7 +300,7 @@ void MoveGen::get_black_pawn_moves()
 
     const uint64_t en_passent_take_right =
         ((m_board[piece_t::black_pawn] >> 9) & m_board[piece_t::info] & ~masks::rank_1 &
-         ~masks::file_A);
+         ~masks::file_a);
     if (en_passent_take_right != 0)
     {
         m_movs[m_idx++] = Move::capture(
@@ -308,7 +311,7 @@ void MoveGen::get_black_pawn_moves()
 
 void MoveGen::black_pawn_taking_moves(const int offset)
 {
-    uint64_t file_mask = offset == 7 ? masks::file_H : masks::file_A;
+    uint64_t const file_mask = offset == 7 ? masks::file_h : masks::file_a;
     for (const auto take_right : BitScan((m_board[piece_t::black_pawn] >> offset) &
                                          m_board[piece_t::white_pcs] & ~file_mask))
     {
@@ -348,7 +351,7 @@ void MoveGen::black_pawn_taking_moves(const int offset)
 
 void MoveGen::white_pawn_taking_moves(const int offset)
 {
-    uint64_t file_mask = offset == 7 ? masks::file_A : masks::file_H;
+    uint64_t const file_mask = offset == 7 ? masks::file_a : masks::file_h;
     for (const auto take : BitScan((m_board[piece_t::white_pawn] << offset) &
                                    m_board[piece_t::black_pcs] & ~file_mask))
     {
@@ -387,8 +390,9 @@ void MoveGen::white_pawn_taking_moves(const int offset)
 
 void MoveGen::get_white_king_moves()
 {
-    const uint64_t moves = move_masks::king_moves[__builtin_ctzll(m_board[piece_t::white_king])] &
-                           ~m_board[piece_t::white_pcs];
+    const uint64_t moves =
+        move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::white_king])) &
+        ~m_board[piece_t::white_pcs];
     const uint64_t info_xor =
         (castling::white_kingside_right | castling::white_queenside_right) & m_board[piece_t::info];
 
@@ -398,20 +402,20 @@ void MoveGen::get_white_king_moves()
     if (((m_board[piece_t::info] & castling::white_kingside_right) != 0) &&
         ((castling::white_kingside_space &
           (m_board[piece_t::white_pcs] | m_board[piece_t::black_pcs])) == 0) &&
-        ((m_board[piece_t::white_rook] & masks::file_H & masks::rank_1) != 0))
+        ((m_board[piece_t::white_rook] & masks::file_h & masks::rank_1) != 0))
     {
         attacks = get_black_attackers(m_board);
         if ((attacks & castling::white_kingside_attacked) == 0)
         {
-            m_movs[m_idx++] =
-                Move::castle_kingside(piece_t::white_king, 0b1010ULL, piece_t::white_rook,
-                                      0b0101ULL, info_xor, m_board[piece_t::info]);
+            m_movs[m_idx++] = Move::castle_kingside(
+                piece_t::white_king, castling::white_kingside_king_move, piece_t::white_rook,
+                castling::white_kingside_rook_move, info_xor, m_board[piece_t::info]);
         }
     }
     if (((m_board[piece_t::info] & castling::white_queenside_right) != 0) &&
         ((castling::white_queenside_space &
           (m_board[piece_t::white_pcs] | m_board[piece_t::black_pcs])) == 0) &&
-        ((m_board[piece_t::white_rook] & masks::file_A & masks::rank_1) != 0))
+        ((m_board[piece_t::white_rook] & masks::file_a & masks::rank_1) != 0))
     {
         if (attacks == 0)
         {
@@ -420,17 +424,18 @@ void MoveGen::get_white_king_moves()
 
         if ((attacks & castling::white_queenside_attacked) == 0)
         {
-            m_movs[m_idx++] =
-                Move::castle_queenside(piece_t::white_king, 0b101000ULL, piece_t::white_rook,
-                                       0b10010000ULL, info_xor, m_board[piece_t::info]);
+            m_movs[m_idx++] = Move::castle_queenside(
+                piece_t::white_king, castling::white_queenside_king_move, piece_t::white_rook,
+                castling::white_queenside_rook_move, info_xor, m_board[piece_t::info]);
         }
     }
 }
 
 void MoveGen::get_black_king_moves()
 {
-    const uint64_t moves = move_masks::king_moves[__builtin_ctzll(m_board[piece_t::black_king])] &
-                           ~m_board[piece_t::black_pcs];
+    const uint64_t moves =
+        move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::black_king])) &
+        ~m_board[piece_t::black_pcs];
 
     const uint64_t info_xor =
         (castling::black_kingside_right | castling::black_queenside_right) & m_board[piece_t::info];
@@ -441,21 +446,21 @@ void MoveGen::get_black_king_moves()
     if (((m_board[piece_t::info] & castling::black_kingside_right) != 0) &&
         ((castling::black_kingside_space &
           (m_board[piece_t::white_pcs] | m_board[piece_t::black_pcs])) == 0) &&
-        ((m_board[piece_t::black_rook] & masks::file_H & masks::rank_8) != 0))
+        ((m_board[piece_t::black_rook] & masks::file_h & masks::rank_8) != 0))
     {
         attacks = get_white_attackers(m_board);
         if ((attacks & castling::black_kingside_attacked) == 0)
         {
-            m_movs[m_idx++] =
-                Move::castle_kingside(piece_t::black_king, 0b1010ULL << 56, piece_t::black_rook,
-                                      0b0101ULL << 56, info_xor, m_board[piece_t::info]);
+            m_movs[m_idx++] = Move::castle_kingside(
+                piece_t::black_king, castling::black_kingside_king_move, piece_t::black_rook,
+                castling::black_kingside_rook_move, info_xor, m_board[piece_t::info]);
         }
     }
 
     if (((m_board[piece_t::info] & castling::black_queenside_right) != 0) &&
         ((castling::black_queenside_space &
           (m_board[piece_t::white_pcs] | m_board[piece_t::black_pcs])) == 0) &&
-        ((m_board[piece_t::black_rook] & masks::file_A & masks::rank_8) != 0))
+        ((m_board[piece_t::black_rook] & masks::file_a & masks::rank_8) != 0))
     {
         if (attacks == 0)
         {
@@ -464,9 +469,9 @@ void MoveGen::get_black_king_moves()
 
         if ((attacks & castling::black_queenside_attacked) == 0)
         {
-            m_movs[m_idx++] =
-                Move::castle_queenside(piece_t::black_king, 0b101000ULL << 56, piece_t::black_rook,
-                                       0b10010000ULL << 56, info_xor, m_board[piece_t::info]);
+            m_movs[m_idx++] = Move::castle_queenside(
+                piece_t::black_king, castling::black_queenside_king_move, piece_t::black_rook,
+                castling::black_queenside_rook_move, info_xor, m_board[piece_t::info]);
         }
     }
 }
@@ -543,14 +548,14 @@ void MoveGen::black_add_to_movs(const piece_t moving_pc, const uint64_t moving_p
 auto MoveGen::get_white_attackers(const BitBoard &m_board) -> uint64_t
 {
     uint64_t attacks = 0;
-    attacks |= ((m_board[piece_t::white_pawn] & ~masks::file_H) << 7) |
-               ((m_board[piece_t::white_pawn] & ~masks::file_A) << 9);
+    attacks |= ((m_board[piece_t::white_pawn] & ~masks::file_h) << 7) |
+               ((m_board[piece_t::white_pawn] & ~masks::file_a) << 9);
 
-    attacks |= move_masks::king_moves[__builtin_ctzll(m_board[piece_t::white_king])];
+    attacks |= move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::white_king]));
 
     for (const auto piece : BitScan(m_board[piece_t::white_knight]))
     {
-        attacks |= move_masks::knight_moves[__builtin_ctzll(piece)];
+        attacks |= move_masks::knight_moves.at(__builtin_ctzll(piece));
     }
 
     for (const auto piece :
@@ -571,14 +576,14 @@ auto MoveGen::get_black_attackers(const BitBoard &m_board) -> uint64_t
 {
     uint64_t attacks = 0;
 
-    attacks |= ((m_board[piece_t::black_pawn] & ~masks::file_H) >> 9) |
-               ((m_board[piece_t::black_pawn] & ~masks::file_A) >> 7);
+    attacks |= ((m_board[piece_t::black_pawn] & ~masks::file_h) >> 9) |
+               ((m_board[piece_t::black_pawn] & ~masks::file_a) >> 7);
 
-    attacks |= move_masks::king_moves[__builtin_ctzll(m_board[piece_t::black_king])];
+    attacks |= move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::black_king]));
 
     for (const auto piece : BitScan(m_board[piece_t::black_knight]))
     {
-        attacks |= move_masks::knight_moves[__builtin_ctzll(piece)];
+        attacks |= move_masks::knight_moves.at(__builtin_ctzll(piece));
     }
 
     for (const auto piece : BitScan(m_board[piece_t::black_bishop] | m_board[piece_t::black_queen]))
@@ -608,17 +613,17 @@ auto MoveGen::is_white_king_in_check() const -> bool
         return true;
     }
     if ((m_board[piece_t::black_knight] &
-         move_masks::knight_moves[__builtin_ctzll(m_board[piece_t::white_king])]) != 0)
+         move_masks::knight_moves.at(__builtin_ctzll(m_board[piece_t::white_king]))) != 0)
     {
         return true;
     }
     if ((m_board[piece_t::black_king] &
-         move_masks::king_moves[__builtin_ctzll(m_board[piece_t::white_king])]) != 0)
+         move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::white_king]))) != 0)
     {
         return true;
     }
-    if (((((m_board[piece_t::white_king] << 9) & ~masks::file_H) |
-          ((m_board[piece_t::white_king] << 7) & ~masks::file_A)) &
+    if (((((m_board[piece_t::white_king] << 9) & ~masks::file_h) |
+          ((m_board[piece_t::white_king] << 7) & ~masks::file_a)) &
          m_board[piece_t::black_pawn]) != 0)
     {
         return true;
@@ -639,17 +644,17 @@ auto MoveGen::is_black_king_in_check() const -> bool
         return true;
     }
     if ((m_board[piece_t::white_knight] &
-         move_masks::knight_moves[__builtin_ctzll(m_board[piece_t::black_king])]) != 0)
+         move_masks::knight_moves.at(__builtin_ctzll(m_board[piece_t::black_king]))) != 0)
     {
         return true;
     }
     if (((m_board[piece_t::white_king] &
-          move_masks::king_moves[__builtin_ctzll(m_board[piece_t::black_king])])) != 0)
+          move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::black_king])))) != 0)
     {
         return true;
     }
-    if (((((m_board[piece_t::black_king] >> 9) & ~masks::file_A) |
-          ((m_board[piece_t::black_king] >> 7) & ~masks::file_H)) &
+    if (((((m_board[piece_t::black_king] >> 9) & ~masks::file_a) |
+          ((m_board[piece_t::black_king] >> 7) & ~masks::file_h)) &
          m_board[piece_t::white_pawn]) != 0)
     {
         return true;
@@ -698,12 +703,13 @@ auto MoveGen::compare_moves(const Move &mov_a, const Move &mov_b) -> bool
     }
 }
 
-auto MoveGen::get(size_t idx) -> Move & { return m_movs[idx]; }
+auto MoveGen::at(size_t idx) -> Move & { return m_movs[idx]; }
+auto MoveGen::at(size_t idx) const -> const Move & { return m_movs[idx]; }
 
-template <side_t side>
+template <side_t Side>
 void MoveGen::gen()
 {
-    if constexpr (side == side_t::white)
+    if constexpr (Side == side_t::white)
     {
         get_white_queen_moves();
         get_white_rook_moves();

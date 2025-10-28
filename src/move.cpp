@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <format>
+#include <string>
 
 #include "bitboard.h"
 #include "data.h"

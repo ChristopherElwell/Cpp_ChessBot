@@ -7,7 +7,7 @@
 namespace pc_sq_table
 {
 
-template <piece_t piece>
+template <piece_t Piece>
 inline constexpr int mid_to_endgame_pc_val = 0;
 
 template <>
@@ -46,12 +46,12 @@ inline constexpr int mid_to_endgame_pc_val<piece_t::black_queen> = 8;
 template <>
 inline constexpr int mid_to_endgame_pc_val<piece_t::black_king> = 0;
 
-template <piece_t piece>
-inline constexpr std::array<int, 64> midgame = {};
+template <piece_t Piece>
+inline constexpr std::array<int, BitBoard::num_squares> midgame = {};
 
 // White Pawn
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::white_pawn> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::white_pawn> = {
     82, 82, 82,  82,  82,  82,  82,  82, 180, 216, 143, 177, 150, 208, 116, 71,
     76, 89, 108, 113, 147, 138, 107, 62, 68,  95,  88,  103, 105, 94,  99,  59,
     55, 80, 77,  94,  99,  88,  92,  57, 56,  78,  78,  72,  85,  85,  115, 70,
@@ -60,7 +60,7 @@ inline constexpr std::array<int, 64> midgame<piece_t::white_pawn> = {
 
 // White Knight
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::white_knight> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::white_knight> = {
     170, 248, 303, 288, 398, 240, 322, 230, 264, 296, 409, 373, 360, 399, 344, 320,
     290, 397, 374, 402, 421, 466, 410, 381, 328, 354, 356, 390, 374, 406, 355, 359,
     324, 341, 353, 350, 365, 356, 358, 329, 314, 328, 349, 347, 356, 354, 362, 321,
@@ -69,7 +69,7 @@ inline constexpr std::array<int, 64> midgame<piece_t::white_knight> = {
 
 // White Bishop
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::white_bishop> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::white_bishop> = {
     336, 369, 283, 328, 340, 323, 372, 357, 339, 381, 347, 352, 395, 424, 383, 318,
     349, 402, 408, 405, 400, 415, 402, 363, 361, 370, 384, 415, 402, 402, 372, 363,
     359, 378, 378, 391, 399, 377, 375, 369, 365, 380, 380, 380, 379, 392, 383, 375,
@@ -78,7 +78,7 @@ inline constexpr std::array<int, 64> midgame<piece_t::white_bishop> = {
 
 // White Rook
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::white_rook> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::white_rook> = {
     509, 519, 509, 528, 540, 486, 508, 520, 504, 509, 535, 539, 557, 544, 503, 521,
     472, 496, 503, 513, 494, 522, 538, 493, 453, 466, 484, 503, 501, 512, 469, 457,
     441, 451, 465, 476, 486, 470, 483, 454, 432, 452, 461, 460, 480, 477, 472, 444,
@@ -87,7 +87,7 @@ inline constexpr std::array<int, 64> midgame<piece_t::white_rook> = {
 
 // White Queen
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::white_queen> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::white_queen> = {
     997,  1025, 1054, 1037, 1084, 1069, 1068, 1070, 1001, 986,  1020, 1026, 1009, 1082, 1053, 1079,
     1012, 1008, 1032, 1033, 1054, 1081, 1072, 1082, 998,  998,  1009, 1009, 1024, 1042, 1023, 1026,
     1016, 999,  1016, 1015, 1023, 1021, 1028, 1022, 1011, 1027, 1014, 1023, 1020, 1023, 1039, 1030,
@@ -96,7 +96,7 @@ inline constexpr std::array<int, 64> midgame<piece_t::white_queen> = {
 
 // White King
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::white_king> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::white_king> = {
     -65, 23, 16,  -15, -56, -34, 2,   13,  29,  -1,  -20, -7,  -8,  -4,  -38, -29,
     -9,  24, 2,   -16, -20, 6,   22,  -22, -17, -20, -12, -27, -30, -25, -14, -36,
     -49, -1, -27, -39, -46, -44, -33, -51, -14, -14, -22, -46, -44, -30, -15, -27,
@@ -105,7 +105,7 @@ inline constexpr std::array<int, 64> midgame<piece_t::white_king> = {
 
 // Black Pawn
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::black_pawn> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::black_pawn> = {
     82,  82,  82,  82,  82,  82,  82,  82, 47, 81, 62,  59,  67,  106, 120, 60,
     56,  78,  78,  72,  85,  85,  115, 70, 55, 80, 77,  94,  99,  88,  92,  57,
     68,  95,  88,  103, 105, 94,  99,  59, 76, 89, 108, 113, 147, 138, 107, 62,
@@ -114,7 +114,7 @@ inline constexpr std::array<int, 64> midgame<piece_t::black_pawn> = {
 
 // Black Knight
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::black_knight> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::black_knight> = {
     232, 316, 279, 304, 320, 309, 318, 314, 308, 284, 325, 334, 336, 355, 323, 318,
     314, 328, 349, 347, 356, 354, 362, 321, 324, 341, 353, 350, 365, 356, 358, 329,
     328, 354, 356, 390, 374, 406, 355, 359, 290, 397, 374, 402, 421, 466, 410, 381,
@@ -123,7 +123,7 @@ inline constexpr std::array<int, 64> midgame<piece_t::black_knight> = {
 
 // Black Bishop
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::black_bishop> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::black_bishop> = {
     332, 362, 351, 344, 352, 353, 326, 344, 369, 380, 381, 365, 372, 386, 398, 366,
     365, 380, 380, 380, 379, 392, 383, 375, 359, 378, 378, 391, 399, 377, 375, 369,
     361, 370, 384, 415, 402, 402, 372, 363, 349, 402, 408, 405, 400, 415, 402, 363,
@@ -132,7 +132,7 @@ inline constexpr std::array<int, 64> midgame<piece_t::black_bishop> = {
 
 // Black Rook
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::black_rook> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::black_rook> = {
     458, 464, 478, 494, 493, 484, 440, 451, 433, 461, 457, 468, 476, 488, 471, 406,
     432, 452, 461, 460, 480, 477, 472, 444, 441, 451, 465, 476, 486, 470, 483, 454,
     453, 466, 484, 503, 501, 512, 469, 457, 472, 496, 503, 513, 494, 522, 538, 493,
@@ -141,7 +141,7 @@ inline constexpr std::array<int, 64> midgame<piece_t::black_rook> = {
 
 // Black Queen
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::black_queen> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::black_queen> = {
     1024, 1007, 1016, 1035, 1010, 1000, 994,  975,  990,  1017, 1036, 1027, 1033, 1040, 1022, 1026,
     1011, 1027, 1014, 1023, 1020, 1023, 1039, 1030, 1016, 999,  1016, 1015, 1023, 1021, 1028, 1022,
     998,  998,  1009, 1009, 1024, 1042, 1023, 1026, 1012, 1008, 1032, 1033, 1054, 1081, 1072, 1082,
@@ -150,18 +150,18 @@ inline constexpr std::array<int, 64> midgame<piece_t::black_queen> = {
 
 // Black King
 template <>
-inline constexpr std::array<int, 64> midgame<piece_t::black_king> = {
+inline constexpr std::array<int, BitBoard::num_squares> midgame<piece_t::black_king> = {
     -15, 36,  12,  -54, 8,   -28, 24,  14,  1,   7,  -8,  -64, -43, -16, 9,   8,
     -14, -14, -22, -46, -44, -30, -15, -27, -49, -1, -27, -39, -46, -44, -33, -51,
     -17, -20, -12, -27, -30, -25, -14, -36, -9,  24, 2,   -16, -20, 6,   22,  -22,
     29,  -1,  -20, -7,  -8,  -4,  -38, -29, -65, 23, 16,  -15, -56, -34, 2,   13};
 
-template <piece_t piece>
-inline constexpr std::array<int, 64> endgame = {};
+template <piece_t Piece>
+inline constexpr std::array<int, BitBoard::num_squares> endgame = {};
 
 // White Pawn
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::white_pawn> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::white_pawn> = {
     94,  94,  94,  94,  94,  94,  94,  94,  272, 267, 252, 228, 241, 226, 259, 281,
     188, 194, 179, 161, 150, 147, 176, 178, 126, 118, 107, 99,  92,  98,  111, 111,
     107, 103, 91,  87,  87,  86,  97,  93,  98,  101, 88,  95,  94,  89,  93,  86,
@@ -170,7 +170,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::white_pawn> = {
 
 // White Knight
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::white_knight> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::white_knight> = {
     223, 243, 268, 253, 250, 254, 218, 182, 256, 273, 256, 279, 272, 256, 257, 229,
     257, 261, 291, 290, 280, 272, 262, 240, 264, 284, 303, 303, 303, 292, 289, 263,
     263, 275, 297, 306, 297, 298, 285, 263, 258, 278, 280, 296, 291, 278, 261, 259,
@@ -179,7 +179,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::white_knight> = {
 
 // White Bishop
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::white_bishop> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::white_bishop> = {
     283, 276, 286, 289, 290, 288, 280, 273, 289, 293, 304, 285, 294, 284, 293, 283,
     299, 289, 297, 296, 295, 303, 297, 301, 294, 306, 309, 306, 311, 307, 300, 299,
     291, 300, 310, 316, 304, 307, 294, 288, 285, 294, 305, 307, 310, 300, 290, 282,
@@ -188,7 +188,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::white_bishop> = {
 
 // White Rook
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::white_rook> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::white_rook> = {
     525, 522, 530, 527, 524, 524, 520, 517, 523, 525, 525, 523, 509, 515, 520, 515,
     519, 519, 519, 517, 516, 509, 507, 509, 516, 515, 525, 513, 514, 513, 511, 514,
     515, 517, 520, 516, 507, 506, 504, 501, 508, 512, 507, 511, 505, 500, 504, 496,
@@ -197,7 +197,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::white_rook> = {
 
 // White Queen
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::white_queen> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::white_queen> = {
     927, 958, 958, 963, 963, 955, 946, 956, 919, 956, 968, 977, 994, 961, 966, 936,
     916, 942, 945, 985, 983, 971, 955, 945, 939, 958, 960, 981, 993, 976, 993, 972,
     918, 964, 955, 983, 967, 970, 975, 959, 920, 909, 951, 942, 945, 953, 946, 941,
@@ -206,7 +206,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::white_queen> = {
 
 // White King
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::white_king> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::white_king> = {
     -74, -35, -18, -18, -11, 15, 4,  -17, -12, 17,  14,  17,  17,  38,  23,  11,
     10,  17,  23,  15,  20,  45, 44, 13,  -8,  22,  24,  27,  26,  33,  26,  3,
     -18, -4,  21,  24,  27,  23, 9,  -11, -19, -3,  11,  21,  23,  16,  7,   -9,
@@ -215,7 +215,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::white_king> = {
 
 // Black Pawn
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::black_pawn> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::black_pawn> = {
     94,  94,  94,  94,  94,  94,  94,  94,  107, 102, 102, 104, 107, 94,  96,  87,
     98,  101, 88,  95,  94,  89,  93,  86,  107, 103, 91,  87,  87,  86,  97,  93,
     126, 118, 107, 99,  92,  98,  111, 111, 188, 194, 179, 161, 150, 147, 176, 178,
@@ -224,7 +224,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::black_pawn> = {
 
 // Black Knight
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::black_knight> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::black_knight> = {
     252, 230, 258, 266, 259, 263, 231, 217, 239, 261, 271, 276, 279, 261, 258, 237,
     258, 278, 280, 296, 291, 278, 261, 259, 263, 275, 297, 306, 297, 298, 285, 263,
     264, 284, 303, 303, 303, 292, 289, 263, 257, 261, 291, 290, 280, 272, 262, 240,
@@ -233,7 +233,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::black_knight> = {
 
 // Black Bishop
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::black_bishop> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::black_bishop> = {
     274, 288, 274, 292, 288, 281, 292, 280, 283, 279, 290, 296, 301, 288, 282, 270,
     285, 294, 305, 307, 310, 300, 290, 282, 291, 300, 310, 316, 304, 307, 294, 288,
     294, 306, 309, 306, 311, 307, 300, 299, 299, 289, 297, 296, 295, 303, 297, 301,
@@ -242,7 +242,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::black_bishop> = {
 
 // Black Rook
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::black_rook> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::black_rook> = {
     503, 514, 515, 511, 507, 499, 516, 492, 506, 506, 512, 514, 503, 503, 501, 509,
     508, 512, 507, 511, 505, 500, 504, 496, 515, 517, 520, 516, 507, 506, 504, 501,
     516, 515, 525, 513, 514, 513, 511, 514, 519, 519, 519, 517, 516, 509, 507, 509,
@@ -251,7 +251,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::black_rook> = {
 
 // Black Queen
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::black_queen> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::black_queen> = {
     903, 908, 914, 893, 931, 904, 916, 895, 914, 913, 906, 920, 920, 913, 900, 904,
     920, 909, 951, 942, 945, 953, 946, 941, 918, 964, 955, 983, 967, 970, 975, 959,
     939, 958, 960, 981, 993, 976, 993, 972, 916, 942, 945, 985, 983, 971, 955, 945,
@@ -260,7 +260,7 @@ inline constexpr std::array<int, 64> endgame<piece_t::black_queen> = {
 
 // Black King
 template <>
-inline constexpr std::array<int, 64> endgame<piece_t::black_king> = {
+inline constexpr std::array<int, BitBoard::num_squares> endgame<piece_t::black_king> = {
     -53, -34, -21, -11, -28, -14, -24, -43, -27, -11, 4,   13,  14,  4,  -5, -17,
     -19, -3,  11,  21,  23,  16,  7,   -9,  -18, -4,  21,  24,  27,  23, 9,  -11,
     -8,  22,  24,  27,  26,  33,  26,  3,   10,  17,  23,  15,  20,  45, 44, 13,
@@ -280,20 +280,20 @@ static constexpr uint64_t rank_6 = 0x0000FF0000000000;
 static constexpr uint64_t rank_7 = 0x00FF000000000000;
 static constexpr uint64_t rank_8 = 0xFF00000000000000;
 
-static constexpr uint64_t file_A = 0x8080808080808080;
-static constexpr uint64_t file_B = 0x4040404040404040;
-static constexpr uint64_t file_C = 0x2020202020202020;
-static constexpr uint64_t file_D = 0x1010101010101010;
-static constexpr uint64_t file_E = 0x0808080808080808;
-static constexpr uint64_t file_F = 0x0404040404040404;
-static constexpr uint64_t file_G = 0x0202020202020202;
-static constexpr uint64_t file_H = 0x0101010101010101;
+static constexpr uint64_t file_a = 0x8080808080808080;
+static constexpr uint64_t file_b = 0x4040404040404040;
+static constexpr uint64_t file_c = 0x2020202020202020;
+static constexpr uint64_t file_d = 0x1010101010101010;
+static constexpr uint64_t file_e = 0x0808080808080808;
+static constexpr uint64_t file_f = 0x0404040404040404;
+static constexpr uint64_t file_g = 0x0202020202020202;
+static constexpr uint64_t file_h = 0x0101010101010101;
 
 inline constexpr std::array<uint64_t, 8> ranks = {rank_1, rank_2, rank_3, rank_4,
                                                   rank_5, rank_6, rank_7, rank_8};
 
-inline constexpr std::array<uint64_t, 8> files = {file_H, file_G, file_F, file_E,
-                                                  file_D, file_C, file_B, file_A};
+inline constexpr std::array<uint64_t, 8> files = {file_h, file_g, file_f, file_e,
+                                                  file_d, file_c, file_b, file_a};
 
 static constexpr uint64_t anti_diag = 0x8040201008040201;
 
@@ -331,13 +331,13 @@ inline constexpr std::array<uint64_t, 15> diag_down = {0,
 
 }  // namespace masks
 
-static constexpr uint64_t sq_A8 = 0x8000000000000000;
+static constexpr uint64_t sq_a8 = 0x8000000000000000;
 
 static const std::array<const char *, 12> piece_emojis = {"♙", "♘", "♗", "♖", "♕", "♔",
                                                           "♟", "♞", "♝", "♜", "♛", "♚"};
 
 // helpers
-const std::array<const char *, 64> square_coords = {
+const std::array<const char *, BitBoard::num_squares> square_coords = {
     "h1", "g1", "f1", "e1", "d1", "c1", "b1", "a1", "h2", "g2", "f2", "e2", "d2", "c2", "b2", "a2",
     "h3", "g3", "f3", "e3", "d3", "c3", "b3", "a3", "h4", "g4", "f4", "e4", "d4", "c4", "b4", "a4",
     "h5", "g5", "f5", "e5", "d5", "c5", "b5", "a5", "h6", "g6", "f6", "e6", "d6", "c6", "b6", "a6",
@@ -352,8 +352,8 @@ const std::array<const char, 12> piece_chars = {
     'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k',
 };
 
-static const char *const black_sq_char = "⬛";
-static const char *const white_sq_char = "⬜";
+static constexpr auto black_sq_char = "⬛";
+static constexpr auto white_sq_char = "⬜";
 
 namespace castling
 {
@@ -372,12 +372,23 @@ static constexpr uint64_t white_kingside_right = 0b00001ULL;
 static constexpr uint64_t white_queenside_right = 0b10000000ULL;
 static constexpr uint64_t black_kingside_right = 0b1ULL << 56;
 static constexpr uint64_t black_queenside_right = 0b10000000ULL << 56;
+
+static constexpr uint64_t white_kingside_king_move = 0b1010ULL;
+static constexpr uint64_t white_kingside_rook_move = 0b0101ULL;
+static constexpr uint64_t white_queenside_king_move = 0b101000ULL;
+static constexpr uint64_t white_queenside_rook_move = 0b10010000ULL;
+
+static constexpr int white_to_black_shift = 56;
+static constexpr uint64_t black_kingside_king_move = white_kingside_king_move << 56;
+static constexpr uint64_t black_kingside_rook_move = white_kingside_rook_move << 56;
+static constexpr uint64_t black_queenside_king_move = white_queenside_king_move << 56;
+static constexpr uint64_t black_queenside_rook_move = white_queenside_rook_move << 56;
 }  // namespace castling
 
 namespace move_masks
 {
 // move gen
-const std::array<uint64_t, 64> king_moves = {
+const std::array<uint64_t, BitBoard::num_squares> king_moves = {
     0x0000000000000302, 0x0000000000000705, 0x0000000000000e0a, 0x0000000000001c14,
     0x0000000000003828, 0x0000000000007050, 0x000000000000e0a0, 0x000000000000c040,
     0x0000000000030203, 0x0000000000070507, 0x00000000000e0a0e, 0x00000000001c141c,
@@ -396,7 +407,7 @@ const std::array<uint64_t, 64> king_moves = {
     0x2838000000000000, 0x5070000000000000, 0xa0e0000000000000, 0x40c0000000000000,
 };
 
-const std::array<uint64_t, 64> knight_moves = {
+const std::array<uint64_t, BitBoard::num_squares> knight_moves = {
     0x0000000000020400, 0x0000000000050800, 0x00000000000a1100, 0x0000000000142200,
     0x0000000000284400, 0x0000000000508800, 0x0000000000a01000, 0x0000000000402000,
     0x0000000002040004, 0x0000000005080008, 0x000000000a110011, 0x0000000014220022,
@@ -415,6 +426,7 @@ const std::array<uint64_t, 64> knight_moves = {
     0x0044280000000000, 0x0088500000000000, 0x0010a00000000000, 0x0020400000000000,
 };
 
+constexpr int sliding_moves_mask = 0x3f;
 const std::array<uint8_t, 768> sliding_moves = {
     0xfe, 0xfd, 0xfb, 0xf7, 0xef, 0xdf, 0xbf, 0x7f, 0x2, 0xfd, 0xfa, 0xf6, 0xee, 0xde, 0xbe, 0x7e,
     0x6,  0x5,  0xfb, 0xf4, 0xec, 0xdc, 0xbc, 0x7c, 0x2, 0x5,  0xfa, 0xf4, 0xec, 0xdc, 0xbc, 0x7c,

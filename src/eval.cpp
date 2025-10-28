@@ -10,14 +10,14 @@ namespace
 {
 constexpr int mg_eg_piece_threshold = 24;
 
-template <piece_t piece>
+template <piece_t Piece>
 void evaluate_pc(const BitBoard& board, int& mg_eval, int& eg_eval, int& mg_to_eg_eval)
 {
-    for (auto pc_bit : BitScan(board[piece]))
+    for (auto pc_bit : BitScan(board[Piece]))
     {
-        mg_eval += pc_sq_table::midgame<piece>[__builtin_ctzll(pc_bit)];
-        eg_eval += pc_sq_table::endgame<piece>[__builtin_ctzll(pc_bit)];
-        mg_to_eg_eval += pc_sq_table::mid_to_endgame_pc_val<piece>;
+        mg_eval += pc_sq_table::midgame<Piece>[__builtin_ctzll(pc_bit)];
+        eg_eval += pc_sq_table::endgame<Piece>[__builtin_ctzll(pc_bit)];
+        mg_to_eg_eval += pc_sq_table::mid_to_endgame_pc_val<Piece>;
     }
 }
 }  // namespace
