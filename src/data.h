@@ -352,6 +352,10 @@ const std::array<const char, 12> piece_chars = {
     'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k',
 };
 
+const std::array<const char, 6> lower_case_piece_chars = {
+    'p', 'n', 'b', 'r', 'q', 'k',
+};
+
 static constexpr auto black_sq_char = "⬛";
 static constexpr auto white_sq_char = "⬜";
 
