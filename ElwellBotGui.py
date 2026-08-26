@@ -2,12 +2,15 @@ from pathlib import Path
 import sys
 import subprocess
 import chess
+import chess.engine
+import chess.pgn
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 import os
 import time
 import threading
+import argparse
 
 colours = ["#DCE6C9", "#BCC6A9", "#FCF6E9"]
 
@@ -267,12 +270,199 @@ def start_bot(bot_dir):
     return process
 
 
+# Plays one or more games between your bot and Stockfish, headless (no GUI).
+# Stockfish is driven over standard UCI via python-chess's engine module;
+# your bot keeps using its own "[go] [fen] [time]" -> "bestmove ..." protocol.
+def run_stockfish_match(
+    bot_dir,
+    stockfish_dir,
+    num_games=10,
+    bot_move_time=3.0,
+    stockfish_move_time=0.1,
+    skill_level=None,
+    elo=None,
+    bot_starts=True,
+    pgn_file="match_games.pgn",
+):
+    bot = start_bot(bot_dir)
+    pgn_out = open(pgn_file, "a", encoding="utf-8", newline="\n")
+
+    try:
+        engine = chess.engine.SimpleEngine.popen_uci(stockfish_dir)
+    except Exception as e:
+        print(f"Failed to start Stockfish at '{stockfish_dir}': {e}")
+        pgn_out.close()
+        bot.terminate()
+        return None
+
+    # Configure Stockfish's strength. Elo limiting takes priority if given.
+    try:
+        if elo is not None:
+            engine.configure({"UCI_LimitStrength": True, "UCI_Elo": elo})
+            print(f"Stockfish strength limited to ~{elo} Elo")
+        elif skill_level is not None:
+            engine.configure({"Skill Level": skill_level})
+            print(f"Stockfish Skill Level set to {skill_level}")
+    except chess.engine.EngineError as e:
+        print(f"Warning: couldn't set Stockfish strength option: {e}")
+
+    results = {"bot_wins": 0, "stockfish_wins": 0, "draws": 0}
+    bot_is_white = bot_starts
+
+    try:
+        for game_num in range(1, num_games + 1):
+            board = chess.Board()
+            print(
+                f"\n=== Game {game_num}/{num_games}: "
+                f"Bot is {'White' if bot_is_white else 'Black'} ==="
+            )
+
+            aborted = False
+            while not board.is_game_over(claim_draw=True):
+                bots_turn = (board.turn == chess.WHITE) == bot_is_white
+
+                if bots_turn:
+                    fen = board.fen()
+                    bot_return = call_bot(bot, ["go", fen, "time", str(bot_move_time)])
+                    if bot_return is None:
+                        print("Bot failed to respond, aborting game")
+                        aborted = True
+                        break
+
+                    bot_words = bot_return.split(" ")
+                    if bot_words[0] != "bestmove":
+                        print(f"Error: invalid bot return: {bot_return}")
+                        aborted = True
+                        break
+
+                    try:
+                        move = chess.Move.from_uci(bot_words[1])
+                    except Exception:
+                        print(f"Error: unparsable bot move: {bot_return}")
+                        aborted = True
+                        break
+                    print("Bot plays:", bot_words[1])
+
+                    if move not in board.legal_moves:
+                        print(f"Error: bot move is not legal: {move}")
+                        aborted = True
+                        break
+
+                    board.push(move)
+                else:
+                    result = engine.play(
+                        board, chess.engine.Limit(time=stockfish_move_time)
+                    )
+                    if result.move is None:
+                        print("Stockfish returned no move, aborting game")
+                        aborted = True
+                        break
+                    board.push(result.move)
+                    print("Stockfish plays:", result.move)
+
+            if aborted:
+                print(f"Final FEN: {board.fen()}")
+            else:
+                outcome = board.outcome(claim_draw=True)
+                if outcome.winner is None:
+                    print(f"Result: Draw ({outcome.termination.name})")
+                    results["draws"] += 1
+                elif outcome.winner == bot_is_white:
+                    print(f"Result: Bot wins ({outcome.termination.name})")
+                    results["bot_wins"] += 1
+                else:
+                    print(f"Result: Stockfish wins ({outcome.termination.name})")
+                    results["stockfish_wins"] += 1
+                pgn_game = chess.pgn.Game.from_board(board)
+                pgn_game.headers["Event"] = "ElwellBot vs Stockfish"
+                pgn_game.headers["Round"] = str(game_num)
+                pgn_game.headers["White"] = "ElwellBot" if bot_is_white else "Stockfish"
+                pgn_game.headers["Black"] = "Stockfish" if bot_is_white else "ElwellBot"
+                pgn_game.headers["Result"] = outcome.result()
+
+                exporter = chess.pgn.FileExporter(pgn_out)
+                pgn_game.accept(exporter)
+                pgn_out.flush()
+                print(f"Game {game_num} saved to {pgn_file}")
+
+            bot_is_white = not bot_is_white  # alternate colours each game
+
+    finally:
+        engine.quit()
+        bot.terminate()
+        pgn_out.close()
+
+    print("\n=== Match Results ===")
+    print(f"Bot wins:       {results['bot_wins']}")
+    print(f"Stockfish wins: {results['stockfish_wins']}")
+    print(f"Draws:          {results['draws']}")
+    print(f"Games saved to: {pgn_file}")
+
+    return results
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python ElwellBotGui.py <bot_dir>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Chess GUI / Stockfish match runner")
+    parser.add_argument("bot_dir", help="Path to your bot's executable")
+    parser.add_argument(
+        "--stockfish",
+        "-s",
+        default=None,
+        help="Path to stockfish.exe. If given, runs a headless match "
+        "against Stockfish instead of opening the GUI.",
+    )
+    parser.add_argument(
+        "--games",
+        "-g",
+        type=int,
+        default=10,
+        help="Number of games to play against Stockfish (default: 10)",
+    )
+    parser.add_argument(
+        "--bot-time",
+        type=float,
+        default=3.0,
+        help="Seconds given to your bot per move (default: 3.0)",
+    )
+    parser.add_argument(
+        "--sf-time",
+        type=float,
+        default=0.1,
+        help="Seconds given to Stockfish per move (default: 0.1)",
+    )
+    parser.add_argument(
+        "--skill-level",
+        type=int,
+        default=None,
+        help="Stockfish 'Skill Level' UCI option, 0 (weakest) to 20 (strongest)",
+    )
+    parser.add_argument(
+        "--elo",
+        type=int,
+        default=None,
+        help="Limit Stockfish to roughly this Elo instead of using --skill-level "
+        "(overrides --skill-level if both are given)",
+    )
+    parser.add_argument(
+        "--pgn-file",
+        default="match_games.pgn",
+        help="File to append each finished game's PGN to (default: match_games.pgn). "
+        "Import this file directly on chess.com/analysis.",
+    )
 
-    bot_dir = sys.argv[1]
+    args = parser.parse_args()
 
-    w = window(bot_dir)
-    w.mainloop()
+    if args.stockfish:
+        run_stockfish_match(
+            args.bot_dir,
+            args.stockfish,
+            num_games=args.games,
+            bot_move_time=args.bot_time,
+            stockfish_move_time=args.sf_time,
+            skill_level=args.skill_level,
+            elo=args.elo,
+            pgn_file=args.pgn_file,
+        )
+    else:
+        w = window(args.bot_dir)
+        w.mainloop()
