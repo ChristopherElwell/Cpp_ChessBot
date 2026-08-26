@@ -6,6 +6,12 @@
 #include "bitboard.h"
 #include "move.h"
 
+#ifdef _DEBUG
+#define DEBUG_LOG(...) std::println(std::cerr, __VA_ARGS__)
+#else
+#define DEBUG_LOG(...) ((void)0)
+#endif
+
 struct result_t
 {
     Move best_move;
@@ -14,7 +20,7 @@ struct result_t
 
 class Engine
 {
-   private:
+private:
     BitBoard m_board = BitBoard::start_position();
     std::string m_uci;
     std::string m_algebraic;
@@ -43,7 +49,7 @@ class Engine
     auto handle_go(const std::string &type_str, const std::string &value_str) -> bool;
     static auto split_into_tokens(const std::string &str) -> std::vector<std::string>;
 
-   public:
+public:
     void uci_loop();
     static auto bitboard_to_string(const uint64_t &board) -> std::string;
     void run(std::chrono::seconds timeout);

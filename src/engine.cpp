@@ -11,6 +11,7 @@
 #include <limits>
 #include <memory>
 #include <print>
+#include <ranges>
 #include <string>
 #include <thread>
 #include <tuple>
@@ -313,22 +314,28 @@ auto Engine::handle_go(const std::string& type_str, const std::string& value_str
     }
     catch (exception& e)
     {
-        println("Failed at stoi: [{}]", value_str);
+        DEBUG_LOG("Failed at stoi: [{}]", value_str);
         return false;
     }
     if (type_str == "depth")
     {
+        DEBUG_LOG("Running at set depth: {}", value);
         run(value);
+        DEBUG_LOG("Returning move: {}", m_algebraic);
+        DEBUG_LOG("PV: {}",
+                  m_pv | std::views::join_with(std::string(", ")) | std::ranges::to<std::string>());
+        return true;
     }
-    else if (type_str == "time")
+    if (type_str == "time")
     {
+        DEBUG_LOG("Running at set time: {}s", value);
         run(chrono::seconds(value));
+        DEBUG_LOG("Returning move: {}", m_algebraic);
+        DEBUG_LOG("PV: {}",
+                  m_pv | std::views::join_with(std::string(", ")) | std::ranges::to<std::string>());
+        return true;
     }
-    else
-    {
-        return false;
-    }
-    return true;
+    return false;
 }
 
 void Engine::uci_loop()
@@ -345,13 +352,11 @@ void Engine::uci_loop()
 
         auto tokens = split_into_tokens(line);
 
-        // Debug output - but check size first!
-        cerr << "Received " << tokens.size() << " tokens: ";
+        DEBUG_LOG("Received {} tokens", tokens.size());
         for (const auto& token : tokens)
         {
-            cerr << "[" << token << "] ";
+            DEBUG_LOG("[{}]", token);
         }
-        cerr << "\n";
 
         if (tokens.empty())
         {
@@ -360,33 +365,31 @@ void Engine::uci_loop()
 
         if (tokens.at(0) == "ready")
         {
-            cout << "ElwellBot ready" << "\n";
+            println("ElwellBot ready");
         }
         else if (tokens.at(0) == "go")
         {
             if (tokens.size() < 4)
             {
-                cout << "Error: go command needs 4 tokens" << "\n";
+                println("Error: go command needs 4 tokens");
                 continue;
             }
 
             if (!handle_position(tokens.at(1)))
             {
-                cout << "Failed to set position" << "\n";
+                println("Failed to set position");
                 continue;
             }
             if (!handle_go(tokens.at(2), tokens.at(3)))
             {
-                cout << "Failed to get best move" << "\n";
+                println("Failed to get best move");
                 continue;
             }
-            cout << "bestmove " << get_uci() << "\n";
+            println("bestmove {}", get_uci());
         }
         else
         {
-            cout << "Did not recognize command: " << tokens.at(0) << "\n";
+            println("Did not recognize command: {}", tokens.at(0));
         }
-
-        cout.flush();  // Extra safety - ensure output is sent
     }
 }
