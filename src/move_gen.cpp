@@ -197,8 +197,8 @@ void MoveGen::get_black_bishop_moves()
 
 void MoveGen::get_white_pawn_moves()
 {
-    for (const auto one_step :
-         bit_scan((m_board[piece_t::white_pawn] << 8) & ~masks::rank_8 & ~m_board[piece_t::all_pcs]))
+    for (const auto one_step : bit_scan((m_board[piece_t::white_pawn] << 8) & ~masks::rank_8 &
+                                        ~m_board[piece_t::all_pcs]))
     {
         m_movs[m_idx++] =
             Move::quiet(piece_t::white_pawn, one_step | one_step >> 8, 0, m_board[piece_t::info]);
@@ -254,8 +254,8 @@ void MoveGen::get_white_pawn_moves()
 
 void MoveGen::get_black_pawn_moves()
 {
-    for (const auto one_step :
-         bit_scan((m_board[piece_t::black_pawn] >> 8) & ~masks::rank_1 & ~m_board[piece_t::all_pcs]))
+    for (const auto one_step : bit_scan((m_board[piece_t::black_pawn] >> 8) & ~masks::rank_1 &
+                                        ~m_board[piece_t::all_pcs]))
     {
         m_movs[m_idx++] =
             Move::quiet(piece_t::black_pawn, one_step | one_step << 8, 0, m_board[piece_t::info]);
@@ -313,7 +313,7 @@ void MoveGen::black_pawn_taking_moves(const int offset)
 {
     uint64_t const file_mask = offset == 7 ? masks::file_h : masks::file_a;
     for (const auto take_right : bit_scan((m_board[piece_t::black_pawn] >> offset) &
-                                         m_board[piece_t::white_pcs] & ~file_mask))
+                                          m_board[piece_t::white_pcs] & ~file_mask))
     {
         for (auto const piece : piece_range::white_no_king())
         {
@@ -353,7 +353,7 @@ void MoveGen::white_pawn_taking_moves(const int offset)
 {
     uint64_t const file_mask = offset == 7 ? masks::file_a : masks::file_h;
     for (const auto take : bit_scan((m_board[piece_t::white_pawn] << offset) &
-                                   m_board[piece_t::black_pcs] & ~file_mask))
+                                    m_board[piece_t::black_pcs] & ~file_mask))
     {
         for (auto const piece : piece_range::black_no_king())
         {
@@ -564,7 +564,8 @@ auto MoveGen::get_white_attackers(const BitBoard &m_board) -> uint64_t
         attacks |= get_white_bishop_attacks(piece);
     }
 
-    for (const auto piece : bit_scan((m_board[piece_t::white_rook] | m_board[piece_t::white_queen])))
+    for (const auto piece :
+         bit_scan((m_board[piece_t::white_rook] | m_board[piece_t::white_queen])))
     {
         attacks |= get_white_rook_attacks(piece);
     }
@@ -586,7 +587,8 @@ auto MoveGen::get_black_attackers(const BitBoard &m_board) -> uint64_t
         attacks |= move_masks::knight_moves.at(__builtin_ctzll(piece));
     }
 
-    for (const auto piece : bit_scan(m_board[piece_t::black_bishop] | m_board[piece_t::black_queen]))
+    for (const auto piece :
+         bit_scan(m_board[piece_t::black_bishop] | m_board[piece_t::black_queen]))
     {
         attacks |= get_black_bishop_attacks(piece);
     }
@@ -674,10 +676,10 @@ auto MoveGen::compare_moves(const Move &mov_a, const Move &mov_b) -> bool
     // If move types are the same, compare based on move type
     switch (mov_a.type)
     {
-        case movType::QUIET:
+        case mov_type::quiet:
             return mov_a.pc1 > mov_b.pc1;  // Higher pc2 comes first
 
-        case movType::CAPTURE:
+        case mov_type::capture:
             // Primary: compare captured pieces (pc2)
             if (mov_b.pc2 != mov_a.pc2)
             {
@@ -686,10 +688,10 @@ auto MoveGen::compare_moves(const Move &mov_a, const Move &mov_b) -> bool
             // Secondary: compare capturing pieces (pc1)
             return mov_b.pc1 > mov_a.pc1;  // Lower pc1 comes first
 
-        case movType::PROMOTE:
+        case mov_type::promote:
             return mov_a.pc2 > mov_b.pc2;  // Higher promotion piece comes first
 
-        case movType::CAPTURE_PROMOTE:
+        case mov_type::capture_promote:
             // Primary: compare promotion piece (pc3)
             if (mov_b.pc3 != mov_a.pc3)
             {

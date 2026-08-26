@@ -4,15 +4,14 @@
 #include <cstdint>
 
 #include "bitboard.h"
-#include "data.h"
 #include "move.h"
 
-static constexpr int moves_ARRAY_LENGTH = 230;
+static constexpr int moves_array_length = 230;
 
 class MoveGen
 {
-   private:
-    std::array<Move, moves_ARRAY_LENGTH> m_movs;
+private:
+    std::array<Move, moves_array_length> m_movs;
     size_t m_idx = 0;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
     const BitBoard &m_board;
@@ -54,7 +53,7 @@ class MoveGen
 
     static auto compare_moves(const Move &mov_a, const Move &mov_b) -> bool;
 
-   public:
+public:
     [[nodiscard]]
     auto length() const -> int
     {
@@ -67,10 +66,10 @@ class MoveGen
     [[nodiscard]] auto is_white_king_in_check() const -> bool;
     [[nodiscard]] auto is_black_king_in_check() const -> bool;
 
-    template <side_t side>
+    template <side_t Side>
     [[nodiscard]] constexpr auto is_king_in_check() const -> bool
     {
-        if constexpr (side == side_t::white)
+        if constexpr (Side == side_t::white)
         {
             return is_white_king_in_check();
         }
@@ -83,7 +82,7 @@ class MoveGen
     auto get_white_attackers(const BitBoard &board) -> uint64_t;
     auto get_black_attackers(const BitBoard &board) -> uint64_t;
 
-    template <side_t side>
+    template <side_t Side>
     void gen();
 
     MoveGen(const BitBoard &board);
@@ -96,11 +95,11 @@ class MoveGen
     MoveGen(MoveGen &&) = delete;
     auto operator=(MoveGen &&other) -> MoveGen & = delete;
 
-    [[nodiscard]] auto begin() const -> std::array<Move, 230>::const_iterator
+    [[nodiscard]] auto begin() const -> std::array<Move, moves_array_length>::const_iterator
     {
         return m_movs.begin();
     }
-    [[nodiscard]] auto end() const -> std::array<Move, 230>::const_iterator
+    [[nodiscard]] auto end() const -> std::array<Move, moves_array_length>::const_iterator
     {
         return m_movs.begin() + m_end_idx;
     }

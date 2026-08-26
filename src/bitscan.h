@@ -3,14 +3,14 @@
 
 struct bit_scan
 {
-   public:
+public:
     struct iterator
     {
-       private:
+    private:
         uint64_t m_mask;
         uint64_t m_bit;
 
-       public:
+    public:
         iterator(uint64_t mask, uint64_t bit) : m_mask(mask), m_bit(bit) {}
         auto operator*() const -> uint64_t { return m_bit; }
         auto operator++() -> iterator &
@@ -27,6 +27,6 @@ struct bit_scan
 
     bit_scan(uint64_t mask) : m_start(mask) {};
 
-   private:
+private:
     uint64_t m_start;
 };

@@ -11,7 +11,7 @@ using namespace std;
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 Move::Move(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, piece_t pc3, uint64_t mov3,
-           uint64_t info, movType type)
+           uint64_t info, mov_type type)
     : pc1(pc1), mov1(mov1), pc2(pc2), mov2(mov2), pc3(pc3), mov3(mov3), info(info), type(type)
 {
 }
@@ -25,7 +25,7 @@ auto Move::quiet(piece_t pc1, uint64_t mov1, uint64_t info, uint64_t board_info)
                 {},
                 0ULL,
                 (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                movType::QUIET};
+                mov_type::quiet};
 }
 
 auto Move::capture(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
@@ -38,7 +38,7 @@ auto Move::capture(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint6
                 {},
                 0ULL,
                 (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                movType::CAPTURE};
+                mov_type::capture};
 }
 
 auto Move::promote(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
@@ -51,7 +51,7 @@ auto Move::promote(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint6
                 {},
                 0ULL,
                 (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                movType::PROMOTE};
+                mov_type::promote};
 }
 
 auto Move::promote_capture(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, piece_t pc3,
@@ -64,7 +64,7 @@ auto Move::promote_capture(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov
                 pc3,
                 mov3,
                 (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                movType::CAPTURE_PROMOTE};
+                mov_type::capture_promote};
 }
 
 auto Move::castle_kingside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
@@ -77,7 +77,7 @@ auto Move::castle_kingside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov
                 {},
                 0ULL,
                 (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                movType::CASTLE_kingside};
+                mov_type::castle_kingside};
 }
 
 auto Move::castle_queenside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
@@ -90,7 +90,7 @@ auto Move::castle_queenside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mo
                 {},
                 0ULL,
                 (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                movType::CASTLE_queenside};
+                mov_type::castle_queenside};
 }
 
 Move::Move()
@@ -101,7 +101,7 @@ Move::Move()
       pc3(piece_t::piece_count),
       mov3(0),
       info(0),
-      type(movType::BOOK_END)
+      type(mov_type::moves_termination)
 {
 }
 
@@ -117,18 +117,18 @@ auto Move::to_string() const -> string
 
     switch (type)
     {
-        case movType::QUIET:
-        case movType::CASTLE_kingside:
-        case movType::CASTLE_queenside:
-        case movType::BOOK_END:
+        case mov_type::quiet:
+        case mov_type::castle_kingside:
+        case mov_type::castle_queenside:
+        case mov_type::moves_termination:
             return out;
-        case movType::CAPTURE:
+        case mov_type::capture:
             return format("{} | Captured piece_t: {}", out,
                           full_piece_names.at(static_cast<int>(pc2)));
-        case movType::PROMOTE:
+        case mov_type::promote:
             return format("{} | Promotee piece_t: {}", out,
                           full_piece_names.at(static_cast<int>(pc2)));
-        case movType::CAPTURE_PROMOTE:
+        case mov_type::capture_promote:
             return format("{} | Captured piece_t: {} | Promoted To piece_t: {}", out,
                           full_piece_names.at(static_cast<int>(pc2)),
                           full_piece_names.at(static_cast<int>(pc3)));

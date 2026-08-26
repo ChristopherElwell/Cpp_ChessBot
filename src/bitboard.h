@@ -52,12 +52,12 @@ struct piece_range
 
        public:
         auto operator*() const -> piece_t { return static_cast<piece_t>(m_value); }
-        auto operator++() -> iterator &
+        auto operator++() -> iterator&
         {
             ++m_value;
             return *this;
         }
-        auto operator!=(const iterator &other) const -> bool { return m_value != other.m_value; }
+        auto operator!=(const iterator& other) const -> bool { return m_value != other.m_value; }
         iterator(int value) : m_value(value) {}
     };
 
@@ -107,11 +107,11 @@ class BitBoard
     static constexpr int num_squares = 64;
 
     static auto start_position() -> BitBoard;
-    BitBoard(const std::string &fen);
+    BitBoard(const std::string& fen);
     BitBoard();
     [[nodiscard]] auto draw() const -> std::string;
     auto operator[](piece_t piece) const -> uint64_t;
-    void apply_move(const Move &move);
+    void apply_move(const Move& move);
     [[nodiscard]] auto whites_turn() const -> bool
     {
         return (m_board[static_cast<int>(piece_t::info)] & turn_bit) != 0;

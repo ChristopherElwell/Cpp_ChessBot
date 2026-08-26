@@ -55,8 +55,8 @@ void Engine::run(chrono::seconds timeout)
     pair<int, unique_ptr<const result_t>> result = {0, nullptr};
 
     thread search_thread(
-        [this, &b_stop, &result]()
-        -> void {
+        [this, &b_stop, &result]() -> void
+        {
             if (m_board.whites_turn())
             {
                 search_async<side_t::white>(result, m_board, b_stop);
@@ -119,30 +119,30 @@ auto Engine::move_to_uci(const Move& mov, const BitBoard& board) -> string
 
     switch (mov.type)
     {
-        case movType::QUIET:
-        case movType::CAPTURE:
-        case movType::CASTLE_kingside:
-        case movType::CASTLE_queenside:
+        case mov_type::quiet:
+        case mov_type::capture:
+        case mov_type::castle_kingside:
+        case mov_type::castle_queenside:
             starting_sq = mov.mov1 & board[mov.pc1];
             ending_sq = mov.mov1 & ~board[mov.pc1];
             out += square_coords.at(__builtin_ctzll(starting_sq));
             out += square_coords.at(__builtin_ctzll(ending_sq));
             return out;
-        case movType::PROMOTE:
+        case mov_type::promote:
             starting_sq = mov.mov1 & board[mov.pc1];
             ending_sq = mov.mov2;
             out += square_coords.at(__builtin_ctzll(starting_sq));
             out += square_coords.at(__builtin_ctzll(ending_sq));
             out += piece_chars.at(static_cast<size_t>(mov.pc2));
             return out;
-        case movType::CAPTURE_PROMOTE:
+        case mov_type::capture_promote:
             starting_sq = mov.mov1 & board[mov.pc1];
             ending_sq = mov.mov3;
             out += square_coords.at(__builtin_ctzll(starting_sq));
             out += square_coords.at(__builtin_ctzll(ending_sq));
             out += piece_chars.at(static_cast<size_t>(mov.pc3));
             return out;
-        case movType::BOOK_END:
+        case mov_type::moves_termination:
             return "BOOK END";
         default:
             return "UNKNOWN";
@@ -159,24 +159,24 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard board) -> string
     {
         switch (move.type)
         {
-            case movType::QUIET:
+            case mov_type::quiet:
                 out = square_coords.at(__builtin_ctzll(to_pos));
                 break;
-            case movType::CAPTURE:
+            case mov_type::capture:
                 out = format("{}x{}", square_coords.at(__builtin_ctzll(from_pos))[0],
                              square_coords.at(__builtin_ctzll(to_pos)));
                 break;
-            case movType::PROMOTE:
+            case mov_type::promote:
                 out = format("{}{}", square_coords.at(__builtin_ctzll(move.mov2)),
                              piece_chars.at(static_cast<int>(move.pc2) % 6));
                 break;
-            case movType::CAPTURE_PROMOTE:
+            case mov_type::capture_promote:
                 out = format("{}{}", square_coords.at(__builtin_ctzll(from_pos))[0],
                              square_coords.at(__builtin_ctzll(move.mov2)),
                              piece_chars.at(static_cast<int>(move.pc3) % 6));
                 break;
-            case movType::CASTLE_kingside:
-            case movType::CASTLE_queenside:
+            case mov_type::castle_kingside:
+            case mov_type::castle_queenside:
             default:
                 return "Unknown";
                 break;
@@ -186,23 +186,25 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard board) -> string
     {
         switch (move.type)
         {
-            case movType::QUIET:
-                    const char piece_char = piece_chars.at(static_cast<int>(move.pc1) % 6);
+            case mov_type::quiet:
+            {
+                const char piece_char = piece_chars.at(static_cast<int>(move.pc1) % 6);
                 out = format("{}x{}", piece_char, square_coords.at(__builtin_ctzll(to_pos)));
                 break;
-            case movType::CAPTURE:
-                {
-                    const char piece_char = piece_chars.at(static_cast<int>(move.pc1) % 6);
-                    out = format("{}x{}", piece_char, square_coords.at(__builtin_ctzll(to_pos)));
-                    break;
-                }
-            case movType::CASTLE_kingside:
+            }
+            case mov_type::capture:
+            {
+                const char piece_char = piece_chars.at(static_cast<int>(move.pc1) % 6);
+                out = format("{}x{}", piece_char, square_coords.at(__builtin_ctzll(to_pos)));
+                break;
+            }
+            case mov_type::castle_kingside:
                 out = "O-O";
                 break;
-            case movType::CASTLE_queenside:
+            case mov_type::castle_queenside:
                 out = "O-O-O";
                 break;
-            case movType::CAPTURE_PROMOTE:
+            case mov_type::capture_promote:
             default:
                 return "Unknown";
         }
