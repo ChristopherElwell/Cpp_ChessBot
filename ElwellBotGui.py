@@ -36,15 +36,6 @@ class window(tk.Tk):
         self.input_fen_btn = tk.Button(self, text="Input Fen", command=self.input_fen)
         self.input_fen_btn.place(x=size, y=size / 4, width=100, height=60, anchor="nw")
 
-        self.get_bot_move = tk.Button(
-            self,
-            text="Get Bot Move",
-            command=lambda: self.run_bot_async(self.bot, self.board.fen()),
-        )
-        self.get_bot_move.place(
-            x=size, y=size * 2 / 4, width=100, height=60, anchor="nw"
-        )
-
         times = [1, 2, 3, 5, 10, 15, 20, 30, 60]
         self.time_select = ttk.Combobox(
             self, values=[str(v) for v in times], state="readonly"
@@ -123,6 +114,7 @@ class window(tk.Tk):
             if board.is_legal(move):
                 board.push(move)
                 self.selected_piece = None
+                self.run_bot_async(self.bot, self.board.fen()),
 
         if board.is_checkmate():
             print("CHECKMATE")
@@ -212,11 +204,12 @@ class window(tk.Tk):
             print(f"Error: Failed to convert to chess move: {bot_words[1]}")
             return
 
-        if move in self.board.legal_moves:
-            self.board.push(move)
-            self.draw_board(self.get_piece_map(self.board))
-        else:
+        if not move in self.board.legal_moves:
             print("Error: Bot move is not legal:", bot_return)
+            return
+
+        self.board.push(move)
+        self.draw_board(self.get_piece_map(self.board))
 
     def update_status(self, text, color):
         self.status_label.config(text=text, bg=color)
@@ -261,6 +254,12 @@ def start_bot(bot_dir):
         cwd=Path(bot_dir).parent,
     )
     time.sleep(1)
+
+    def stderr_reader():
+        for line in iter(process.stderr.readline, ""):
+            print(f"[BOT STDERR] {line.rstrip()}")
+
+    threading.Thread(target=stderr_reader, daemon=True).start()
 
     ready_response = call_bot(process, ["ready"])
     print(f"Ready? Bot says: \n\t{ready_response}")
