@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
@@ -111,6 +112,7 @@ void test_puzzles(size_t count)
     int passed = 0;
     Engine engine;
     count = min(count, pzls.size());
+    const auto clock_start = chrono::high_resolution_clock::now();
     for (auto pzl : pzls)
     {
         const string &fen = pzl[0];
@@ -134,7 +136,10 @@ void test_puzzles(size_t count)
             print("\nFAILED | Bot Move: [{}] Correct Move: [{}]\n", engine.get_algebraic(), answer);
         }
     }
-    cout << "\n\nPASS RATE: " << passed << "/" << count;
+    const auto clock_end = chrono::high_resolution_clock::now();
+    LOG("\n\nPASS RATE: {}/{}", passed, count);
+    LOG("Time to complete: {}",
+        chrono::duration_cast<chrono::milliseconds>(clock_end - clock_start));
 }
 
 namespace
