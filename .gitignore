@@ -27,5 +27,4 @@ private.h
 *.vcxproj*
 *.DS_Store
 
-# Clang-tidy script by LLVM
-run-clang-tidy.py
+*.pgn
