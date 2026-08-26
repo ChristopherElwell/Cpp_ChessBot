@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -32,12 +33,12 @@ void Engine::run(int depth)
     if (m_board.whites_turn())
     {
         tie(m_evaluation, p_result) = search<side_t::white>(
-            m_board, depth, numeric_limits<int>::min(), numeric_limits<int>::max(), b_stop);
+            m_board, depth, numeric_limits<int>::min(), numeric_limits<int>::max(), 0, b_stop);
     }
     else
     {
         tie(m_evaluation, p_result) = search<side_t::black>(
-            m_board, depth, numeric_limits<int>::min(), numeric_limits<int>::max(), b_stop);
+            m_board, depth, numeric_limits<int>::min(), numeric_limits<int>::max(), 0, b_stop);
     }
     if (p_result)
     {
@@ -69,7 +70,7 @@ void Engine::run(chrono::seconds timeout)
         });
 
     this_thread::sleep_for(timeout);
-    b_stop = true;
+    b_stop.store(true, memory_order_relaxed);
     search_thread.join();
 
     if (result.second)
@@ -134,7 +135,7 @@ auto Engine::move_to_uci(const Move& mov, const BitBoard& board) -> string
             ending_sq = mov.mov2;
             out += square_coords.at(countr_zero(starting_sq));
             out += square_coords.at(countr_zero(ending_sq));
-            out += piece_chars.at(static_cast<size_t>(mov.pc2) % 6);
+            out += lower_case_piece_chars.at(static_cast<size_t>(mov.pc2) % 6);
             return out;
         case mov_type::capture_promote:
             starting_sq = mov.mov1 & board[mov.pc1];
@@ -144,7 +145,7 @@ auto Engine::move_to_uci(const Move& mov, const BitBoard& board) -> string
             out += piece_chars.at(static_cast<size_t>(mov.pc3));
             return out;
         case mov_type::moves_termination:
-            return "BOOK END";
+            return "MOVES TERMINATED";
         default:
             return "UNKNOWN";
     }

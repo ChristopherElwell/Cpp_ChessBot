@@ -11,6 +11,20 @@
 #else
 #define DEBUG_LOG(...) ((void)0)
 #endif
+#define LOG(...) std::println(std::cerr, __VA_ARGS__)
+
+enum class mode : uint8_t
+{
+    uci,
+    puzzles,
+    perft
+};
+
+struct arguments
+{
+    mode mode = mode::uci;
+    int count = 0;
+};
 
 struct result_t
 {
@@ -28,8 +42,8 @@ private:
     int m_evaluation;
 
     template <side_t Side>
-    static auto search(BitBoard &board, int iter, int alpha, int beta, std::atomic_bool &b_stop)
-        -> std::pair<int, std::unique_ptr<result_t>>;
+    static auto search(BitBoard &board, int depth, int alpha, int beta, int ply,
+                       std::atomic_bool &b_stop) -> std::pair<int, std::unique_ptr<result_t>>;
 
     template <side_t Side>
     static void search_async(std::pair<int, std::unique_ptr<const result_t>> &result,
