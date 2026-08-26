@@ -105,11 +105,6 @@ Move::Move()
 {
 }
 
-auto Move::copy(const Move &mov) -> Move
-{
-    return Move{mov.pc1, mov.mov1, mov.pc2, mov.mov2, mov.pc3, mov.mov3, mov.info, mov.type};
-}
-
 auto Move::to_string() const -> string
 {
     string out = format("Move Type: {} | Primary piece_t: {}", move_type_to_string(type),

@@ -78,6 +78,5 @@ struct Move
     static auto castle_queenside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2,
                                  uint64_t info, uint64_t board_info) -> Move;
 
-    static auto copy(const Move &mov) -> Move;
     [[nodiscard]] auto to_string() const -> std::string;
 };
