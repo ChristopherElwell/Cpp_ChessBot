@@ -126,21 +126,21 @@ auto Engine::move_to_uci(const Move& mov, const BitBoard& board) -> string
         case mov_type::castle_queenside:
             starting_sq = mov.mov1 & board[mov.pc1];
             ending_sq = mov.mov1 & ~board[mov.pc1];
-            out += square_coords.at(__builtin_ctzll(starting_sq));
-            out += square_coords.at(__builtin_ctzll(ending_sq));
+            out += square_coords.at(countr_zero(starting_sq));
+            out += square_coords.at(countr_zero(ending_sq));
             return out;
         case mov_type::promote:
             starting_sq = mov.mov1 & board[mov.pc1];
             ending_sq = mov.mov2;
-            out += square_coords.at(__builtin_ctzll(starting_sq));
-            out += square_coords.at(__builtin_ctzll(ending_sq));
-            out += piece_chars.at(static_cast<size_t>(mov.pc2));
+            out += square_coords.at(countr_zero(starting_sq));
+            out += square_coords.at(countr_zero(ending_sq));
+            out += piece_chars.at(static_cast<size_t>(mov.pc2) % 6);
             return out;
         case mov_type::capture_promote:
             starting_sq = mov.mov1 & board[mov.pc1];
             ending_sq = mov.mov3;
-            out += square_coords.at(__builtin_ctzll(starting_sq));
-            out += square_coords.at(__builtin_ctzll(ending_sq));
+            out += square_coords.at(countr_zero(starting_sq));
+            out += square_coords.at(countr_zero(ending_sq));
             out += piece_chars.at(static_cast<size_t>(mov.pc3));
             return out;
         case mov_type::moves_termination:
@@ -161,19 +161,19 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard board) -> string
         switch (move.type)
         {
             case mov_type::quiet:
-                out = square_coords.at(__builtin_ctzll(to_pos));
+                out = square_coords.at(countr_zero(to_pos));
                 break;
             case mov_type::capture:
-                out = format("{}x{}", square_coords.at(__builtin_ctzll(from_pos))[0],
-                             square_coords.at(__builtin_ctzll(to_pos)));
+                out = format("{}x{}", square_coords.at(countr_zero(from_pos))[0],
+                             square_coords.at(countr_zero(to_pos)));
                 break;
             case mov_type::promote:
-                out = format("{}{}", square_coords.at(__builtin_ctzll(move.mov2)),
+                out = format("{}{}", square_coords.at(countr_zero(move.mov2)),
                              piece_chars.at(static_cast<int>(move.pc2) % 6));
                 break;
             case mov_type::capture_promote:
-                out = format("{}{}", square_coords.at(__builtin_ctzll(from_pos))[0],
-                             square_coords.at(__builtin_ctzll(move.mov2)),
+                out = format("{}x{}={}", square_coords.at(countr_zero(from_pos))[0],
+                             square_coords.at(countr_zero(move.mov2)),
                              piece_chars.at(static_cast<int>(move.pc3) % 6));
                 break;
             case mov_type::castle_kingside:
@@ -190,13 +190,13 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard board) -> string
             case mov_type::quiet:
             {
                 const char piece_char = piece_chars.at(static_cast<int>(move.pc1) % 6);
-                out = format("{}x{}", piece_char, square_coords.at(__builtin_ctzll(to_pos)));
+                out = format("{}{}", piece_char, square_coords.at(countr_zero(to_pos)));
                 break;
             }
             case mov_type::capture:
             {
                 const char piece_char = piece_chars.at(static_cast<int>(move.pc1) % 6);
-                out = format("{}x{}", piece_char, square_coords.at(__builtin_ctzll(to_pos)));
+                out = format("{}x{}", piece_char, square_coords.at(countr_zero(to_pos)));
                 break;
             }
             case mov_type::castle_kingside:

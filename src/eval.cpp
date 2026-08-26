@@ -1,5 +1,7 @@
 #include "eval.h"
 
+#include <bit>
+
 #include "bitboard.h"
 #include "bitscan.h"
 #include "data.h"
@@ -15,8 +17,8 @@ void evaluate_pc(const BitBoard& board, int& mg_eval, int& eg_eval, int& mg_to_e
 {
     for (auto pc_bit : bit_scan(board[Piece]))
     {
-        mg_eval += pc_sq_table::midgame<Piece>[__builtin_ctzll(pc_bit)];
-        eg_eval += pc_sq_table::endgame<Piece>[__builtin_ctzll(pc_bit)];
+        mg_eval += pc_sq_table::midgame<Piece>[countr_zero(pc_bit)];
+        eg_eval += pc_sq_table::endgame<Piece>[countr_zero(pc_bit)];
         mg_to_eg_eval += pc_sq_table::mid_to_endgame_pc_val<Piece>;
     }
 }

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 
@@ -14,7 +15,7 @@ using namespace std;
 
 auto MoveGen::get_white_rook_attacks(const uint64_t rook) const -> uint64_t
 {
-    const int pos = __builtin_ctzll(rook);
+    const int pos = countr_zero(rook);
     const int rank = pos >> 3;
     const int file = pos & 7;
     const int base = pos & ~7;
@@ -36,7 +37,7 @@ auto MoveGen::get_white_rook_attacks(const uint64_t rook) const -> uint64_t
 
 auto MoveGen::get_black_rook_attacks(const uint64_t rook) const -> uint64_t
 {
-    const int pos = __builtin_ctzll(rook);
+    const int pos = countr_zero(rook);
     const int rank = pos >> 3;
     const int file = pos & 7;
     const int base = pos & ~7;
@@ -65,7 +66,7 @@ auto MoveGen::get_white_bishop_attacks(const uint64_t bishop) const -> uint64_t
     uint64_t temp = 0;
     uint64_t first_pc = 0;
     uint64_t spots = 0;
-    const int pos = __builtin_ctzll(bishop);
+    const int pos = countr_zero(bishop);
     up_ray = masks::diag_up[(pos & 7) + (pos >> 3)];
     down_ray = masks::diag_down[7 + (pos >> 3) - (pos & 7)];
 
@@ -78,7 +79,7 @@ auto MoveGen::get_white_bishop_attacks(const uint64_t bishop) const -> uint64_t
 
     temp = pcs_behind & up_ray;
     mask = static_cast<int>(temp == 0) - 1;
-    first_pc = (sq_a8 >> __builtin_clzll(temp)) & mask;
+    first_pc = (sq_a8 >> countl_zero(temp)) & mask;
     spots |= (bishop - 1) & ~((first_pc - 1) | first_pc) & up_ray;
     spots |= first_pc & m_board[piece_t::black_pcs];
     spots |= up_ray & (bishop - 1) & ~mask;
@@ -88,7 +89,7 @@ auto MoveGen::get_white_bishop_attacks(const uint64_t bishop) const -> uint64_t
 
     temp = pcs_behind & down_ray;
     mask = static_cast<int>(temp == 0) - 1;
-    first_pc = (sq_a8 >> __builtin_clzll(temp)) & mask;
+    first_pc = (sq_a8 >> countl_zero(temp)) & mask;
     spots |= (bishop - 1) & ~((first_pc - 1) | first_pc) & down_ray;
     spots |= first_pc & m_board[piece_t::black_pcs];
     spots |= down_ray & (bishop - 1) & ~mask;
@@ -103,7 +104,7 @@ auto MoveGen::get_black_bishop_attacks(const uint64_t bishop) const -> uint64_t
     uint64_t temp = 0;
     uint64_t first_pc = 0;
     uint64_t spots = 0;
-    const int pos = __builtin_ctzll(bishop);
+    const int pos = countr_zero(bishop);
     up_ray = masks::diag_up[(pos & 7) + (pos >> 3)];
     down_ray = masks::diag_down[7 + (pos >> 3) - (pos & 7)];
 
@@ -116,7 +117,7 @@ auto MoveGen::get_black_bishop_attacks(const uint64_t bishop) const -> uint64_t
 
     temp = pcs_behind & up_ray;
     mask = static_cast<int>(temp == 0) - 1;
-    first_pc = (sq_a8 >> __builtin_clzll(temp)) & mask;
+    first_pc = (sq_a8 >> countl_zero(temp)) & mask;
     spots |= (bishop - 1) & ~((first_pc - 1) | first_pc) & up_ray;
     spots |= first_pc & m_board[piece_t::white_pcs];
     spots |= up_ray & (bishop - 1) & ~mask;
@@ -126,7 +127,7 @@ auto MoveGen::get_black_bishop_attacks(const uint64_t bishop) const -> uint64_t
 
     temp = pcs_behind & down_ray;
     mask = static_cast<int>(temp == 0) - 1;
-    first_pc = (sq_a8 >> __builtin_clzll(temp)) & mask;
+    first_pc = (sq_a8 >> countl_zero(temp)) & mask;
     spots |= (bishop - 1) & ~((first_pc - 1) | first_pc) & down_ray;
     spots |= first_pc & m_board[piece_t::white_pcs];
     spots |= down_ray & (bishop - 1) & ~mask;
@@ -138,7 +139,7 @@ void MoveGen::get_white_knight_moves()
     for (const auto knight : bit_scan(m_board[piece_t::white_knight]))
     {
         const uint64_t moves =
-            move_masks::knight_moves[__builtin_ctzll(knight)] & ~m_board[piece_t::white_pcs];
+            move_masks::knight_moves[countr_zero(knight)] & ~m_board[piece_t::white_pcs];
         white_add_to_movs(piece_t::white_knight, knight, moves, 0);
     }
 }
@@ -148,7 +149,7 @@ void MoveGen::get_black_knight_moves()
     for (const auto knight : bit_scan(m_board[piece_t::black_knight]))
     {
         const uint64_t moves =
-            move_masks::knight_moves[__builtin_ctzll(knight)] & ~m_board[piece_t::black_pcs];
+            move_masks::knight_moves[countr_zero(knight)] & ~m_board[piece_t::black_pcs];
         black_add_to_movs(piece_t::black_knight, knight, moves, 0);
     }
 }
@@ -390,9 +391,8 @@ void MoveGen::white_pawn_taking_moves(const int offset)
 
 void MoveGen::get_white_king_moves()
 {
-    const uint64_t moves =
-        move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::white_king])) &
-        ~m_board[piece_t::white_pcs];
+    const uint64_t moves = move_masks::king_moves.at(countr_zero(m_board[piece_t::white_king])) &
+                           ~m_board[piece_t::white_pcs];
     const uint64_t info_xor =
         (castling::white_kingside_right | castling::white_queenside_right) & m_board[piece_t::info];
 
@@ -433,9 +433,8 @@ void MoveGen::get_white_king_moves()
 
 void MoveGen::get_black_king_moves()
 {
-    const uint64_t moves =
-        move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::black_king])) &
-        ~m_board[piece_t::black_pcs];
+    const uint64_t moves = move_masks::king_moves.at(countr_zero(m_board[piece_t::black_king])) &
+                           ~m_board[piece_t::black_pcs];
 
     const uint64_t info_xor =
         (castling::black_kingside_right | castling::black_queenside_right) & m_board[piece_t::info];
@@ -551,11 +550,11 @@ auto MoveGen::get_white_attackers(const BitBoard &m_board) -> uint64_t
     attacks |= ((m_board[piece_t::white_pawn] & ~masks::file_h) << 7) |
                ((m_board[piece_t::white_pawn] & ~masks::file_a) << 9);
 
-    attacks |= move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::white_king]));
+    attacks |= move_masks::king_moves.at(countr_zero(m_board[piece_t::white_king]));
 
     for (const auto piece : bit_scan(m_board[piece_t::white_knight]))
     {
-        attacks |= move_masks::knight_moves.at(__builtin_ctzll(piece));
+        attacks |= move_masks::knight_moves.at(countr_zero(piece));
     }
 
     for (const auto piece :
@@ -580,11 +579,11 @@ auto MoveGen::get_black_attackers(const BitBoard &m_board) -> uint64_t
     attacks |= ((m_board[piece_t::black_pawn] & ~masks::file_h) >> 9) |
                ((m_board[piece_t::black_pawn] & ~masks::file_a) >> 7);
 
-    attacks |= move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::black_king]));
+    attacks |= move_masks::king_moves.at(countr_zero(m_board[piece_t::black_king]));
 
     for (const auto piece : bit_scan(m_board[piece_t::black_knight]))
     {
-        attacks |= move_masks::knight_moves.at(__builtin_ctzll(piece));
+        attacks |= move_masks::knight_moves.at(countr_zero(piece));
     }
 
     for (const auto piece :
@@ -615,12 +614,12 @@ auto MoveGen::is_white_king_in_check() const -> bool
         return true;
     }
     if ((m_board[piece_t::black_knight] &
-         move_masks::knight_moves.at(__builtin_ctzll(m_board[piece_t::white_king]))) != 0)
+         move_masks::knight_moves.at(countr_zero(m_board[piece_t::white_king]))) != 0)
     {
         return true;
     }
     if ((m_board[piece_t::black_king] &
-         move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::white_king]))) != 0)
+         move_masks::king_moves.at(countr_zero(m_board[piece_t::white_king]))) != 0)
     {
         return true;
     }
@@ -646,12 +645,12 @@ auto MoveGen::is_black_king_in_check() const -> bool
         return true;
     }
     if ((m_board[piece_t::white_knight] &
-         move_masks::knight_moves.at(__builtin_ctzll(m_board[piece_t::black_king]))) != 0)
+         move_masks::knight_moves.at(countr_zero(m_board[piece_t::black_king]))) != 0)
     {
         return true;
     }
     if (((m_board[piece_t::white_king] &
-          move_masks::king_moves.at(__builtin_ctzll(m_board[piece_t::black_king])))) != 0)
+          move_masks::king_moves.at(countr_zero(m_board[piece_t::black_king])))) != 0)
     {
         return true;
     }
