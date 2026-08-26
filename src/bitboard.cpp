@@ -18,7 +18,7 @@ using namespace std;
 
 auto BitBoard::operator[](piece_t piece) const -> uint64_t
 {
-    return board[static_cast<int>(piece)];
+    return m_board[static_cast<int>(piece)];
 }
 
 auto BitBoard::start_position() -> BitBoard { return {starting_pos}; }
@@ -49,7 +49,7 @@ BitBoard::BitBoard(const string &fen)
             case 'r':
             case 'q':
             case 'k':
-                board[static_cast<int>(piece_t_code_map[piece])] |=
+                m_board[static_cast<int>(piece_t_code_map[piece])] |=
                     1LL << (BitBoard::num_squares - 1 - sqr);
                 sqr++;
                 break;
@@ -78,7 +78,7 @@ BitBoard::BitBoard(const string &fen)
     idx++;
     if (fen[idx] == 'w')
     {
-        board[static_cast<int>(piece_t::info)] |= TURN_BIT;
+        m_board[static_cast<int>(piece_t::info)] |= turn_bit;
     }
     idx += 2;
 
@@ -87,16 +87,16 @@ BitBoard::BitBoard(const string &fen)
         switch (fen[idx])
         {
             case 'K':
-                board[static_cast<int>(piece_t::info)] |= castling::white_kingside_right;
+                m_board[static_cast<int>(piece_t::info)] |= castling::white_kingside_right;
                 break;
             case 'Q':
-                board[static_cast<int>(piece_t::info)] |= castling::white_queenside_right;
+                m_board[static_cast<int>(piece_t::info)] |= castling::white_queenside_right;
                 break;
             case 'k':
-                board[static_cast<int>(piece_t::info)] |= castling::black_kingside_right;
+                m_board[static_cast<int>(piece_t::info)] |= castling::black_kingside_right;
                 break;
             case 'q':
-                board[static_cast<int>(piece_t::info)] |= castling::black_queenside_right;
+                m_board[static_cast<int>(piece_t::info)] |= castling::black_queenside_right;
                 break;
             default:
                 break;
@@ -109,49 +109,49 @@ BitBoard::BitBoard(const string &fen)
     {
         const char file = fen[idx++];
         const char rank = fen[idx++];
-        board[static_cast<int>(piece_t::info)] |= sq_from_name(file, rank);
+        m_board[static_cast<int>(piece_t::info)] |= sq_from_name(file, rank);
     }
 
-    board[static_cast<int>(piece_t::white_pcs)] = board[static_cast<int>(piece_t::white_pawn)] |
-                                                  board[static_cast<int>(piece_t::white_bishop)] |
-                                                  board[static_cast<int>(piece_t::white_knight)] |
-                                                  board[static_cast<int>(piece_t::white_rook)] |
-                                                  board[static_cast<int>(piece_t::white_queen)] |
-                                                  board[static_cast<int>(piece_t::white_king)];
-    board[static_cast<int>(piece_t::black_pcs)] = board[static_cast<int>(piece_t::black_pawn)] |
-                                                  board[static_cast<int>(piece_t::black_bishop)] |
-                                                  board[static_cast<int>(piece_t::black_knight)] |
-                                                  board[static_cast<int>(piece_t::black_rook)] |
-                                                  board[static_cast<int>(piece_t::black_queen)] |
-                                                  board[static_cast<int>(piece_t::black_king)];
-    board[static_cast<int>(piece_t::all_pcs)] =
-        board[static_cast<int>(piece_t::white_pcs)] | board[static_cast<int>(piece_t::black_pcs)];
+    m_board[static_cast<int>(piece_t::white_pcs)] = m_board[static_cast<int>(piece_t::white_pawn)] |
+                                                  m_board[static_cast<int>(piece_t::white_bishop)] |
+                                                  m_board[static_cast<int>(piece_t::white_knight)] |
+                                                  m_board[static_cast<int>(piece_t::white_rook)] |
+                                                  m_board[static_cast<int>(piece_t::white_queen)] |
+                                                  m_board[static_cast<int>(piece_t::white_king)];
+    m_board[static_cast<int>(piece_t::black_pcs)] = m_board[static_cast<int>(piece_t::black_pawn)] |
+                                                  m_board[static_cast<int>(piece_t::black_bishop)] |
+                                                  m_board[static_cast<int>(piece_t::black_knight)] |
+                                                  m_board[static_cast<int>(piece_t::black_rook)] |
+                                                  m_board[static_cast<int>(piece_t::black_queen)] |
+                                                  m_board[static_cast<int>(piece_t::black_king)];
+    m_board[static_cast<int>(piece_t::all_pcs)] =
+        m_board[static_cast<int>(piece_t::white_pcs)] | m_board[static_cast<int>(piece_t::black_pcs)];
 }
 
 void BitBoard::apply_move(const Move &move)
 {
     assert(move.type != movType::BOOK_END);
-    board[static_cast<int>(move.pc1)] ^= move.mov1;
-    board[static_cast<int>(move.pc2)] ^= move.mov2;
-    board[static_cast<int>(move.pc3)] ^= move.mov3;
+    m_board[static_cast<int>(move.pc1)] ^= move.mov1;
+    m_board[static_cast<int>(move.pc2)] ^= move.mov2;
+    m_board[static_cast<int>(move.pc3)] ^= move.mov3;
 
-    board[static_cast<int>(piece_t::info)] ^= (move.info | TURN_BIT);
+    m_board[static_cast<int>(piece_t::info)] ^= (move.info | turn_bit);
 
     // TODO: xor optimize
-    board[static_cast<int>(piece_t::white_pcs)] = board[static_cast<int>(piece_t::white_pawn)] |
-                                                  board[static_cast<int>(piece_t::white_bishop)] |
-                                                  board[static_cast<int>(piece_t::white_knight)] |
-                                                  board[static_cast<int>(piece_t::white_rook)] |
-                                                  board[static_cast<int>(piece_t::white_queen)] |
-                                                  board[static_cast<int>(piece_t::white_king)];
-    board[static_cast<int>(piece_t::black_pcs)] = board[static_cast<int>(piece_t::black_pawn)] |
-                                                  board[static_cast<int>(piece_t::black_bishop)] |
-                                                  board[static_cast<int>(piece_t::black_knight)] |
-                                                  board[static_cast<int>(piece_t::black_rook)] |
-                                                  board[static_cast<int>(piece_t::black_queen)] |
-                                                  board[static_cast<int>(piece_t::black_king)];
-    board[static_cast<int>(piece_t::all_pcs)] =
-        board[static_cast<int>(piece_t::white_pcs)] | board[static_cast<int>(piece_t::black_pcs)];
+    m_board[static_cast<int>(piece_t::white_pcs)] = m_board[static_cast<int>(piece_t::white_pawn)] |
+                                                  m_board[static_cast<int>(piece_t::white_bishop)] |
+                                                  m_board[static_cast<int>(piece_t::white_knight)] |
+                                                  m_board[static_cast<int>(piece_t::white_rook)] |
+                                                  m_board[static_cast<int>(piece_t::white_queen)] |
+                                                  m_board[static_cast<int>(piece_t::white_king)];
+    m_board[static_cast<int>(piece_t::black_pcs)] = m_board[static_cast<int>(piece_t::black_pawn)] |
+                                                  m_board[static_cast<int>(piece_t::black_bishop)] |
+                                                  m_board[static_cast<int>(piece_t::black_knight)] |
+                                                  m_board[static_cast<int>(piece_t::black_rook)] |
+                                                  m_board[static_cast<int>(piece_t::black_queen)] |
+                                                  m_board[static_cast<int>(piece_t::black_king)];
+    m_board[static_cast<int>(piece_t::all_pcs)] =
+        m_board[static_cast<int>(piece_t::white_pcs)] | m_board[static_cast<int>(piece_t::black_pcs)];
 }
 
 auto BitBoard::draw() const -> string
@@ -162,7 +162,7 @@ auto BitBoard::draw() const -> string
     string out = "8 ";
     for (int i = 0; i < BitBoard::num_squares; i++)
     {
-        out += ((i % 8 + i / 8) % 2 == 0 ? light : dark);
+        out += (((i % 8) + (i / 8)) % 2 == 0 ? light : dark);
         int piece_found = 0;
         for (const auto piece : piece_range::all())
         {

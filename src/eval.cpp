@@ -13,7 +13,7 @@ constexpr int mg_eg_piece_threshold = 24;
 template <piece_t Piece>
 void evaluate_pc(const BitBoard& board, int& mg_eval, int& eg_eval, int& mg_to_eg_eval)
 {
-    for (auto pc_bit : BitScan(board[Piece]))
+    for (auto pc_bit : bit_scan(board[Piece]))
     {
         mg_eval += pc_sq_table::midgame<Piece>[__builtin_ctzll(pc_bit)];
         eg_eval += pc_sq_table::endgame<Piece>[__builtin_ctzll(pc_bit)];
@@ -49,6 +49,6 @@ auto evaluate(const BitBoard& board) -> int
     {
         return mg_eval;
     }
-    return (mg_eval * mg_to_eg_counter + eg_eval * (mg_eg_piece_threshold - mg_to_eg_counter)) /
+    return ((mg_eval * mg_to_eg_counter) + (eg_eval * (mg_eg_piece_threshold - mg_to_eg_counter))) /
            mg_eg_piece_threshold;
 }

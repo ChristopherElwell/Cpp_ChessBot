@@ -45,43 +45,43 @@ inline auto operator-(const piece_t pc_a, const piece_t pc_b) -> int
 struct piece_range
 {
    public:
-    struct Iterator
+    struct iterator
     {
        private:
-        int value;
+        int m_value;
 
        public:
-        auto operator*() const -> piece_t { return static_cast<piece_t>(value); }
-        auto operator++() -> Iterator &
+        auto operator*() const -> piece_t { return static_cast<piece_t>(m_value); }
+        auto operator++() -> iterator &
         {
-            ++value;
+            ++m_value;
             return *this;
         }
-        auto operator!=(const Iterator &other) const -> bool { return value != other.value; }
-        Iterator(int value) : value(value) {}
+        auto operator!=(const iterator &other) const -> bool { return m_value != other.m_value; }
+        iterator(int value) : m_value(value) {}
     };
 
-    [[nodiscard]] auto begin() const -> Iterator { return Iterator{static_cast<int>(start)}; }
-    [[nodiscard]] auto end() const -> Iterator
+    [[nodiscard]] auto begin() const -> iterator { return iterator{static_cast<int>(m_start)}; }
+    [[nodiscard]] auto end() const -> iterator
     {
-        const auto end = static_cast<int>(stop) + 1;
-        return Iterator{end};
+        const auto end = static_cast<int>(m_stop) + 1;
+        return iterator{end};
     }
 
-    piece_range(piece_t start, piece_t stop) : start(start), stop(stop) {};
-    static auto Black() -> piece_range
+    piece_range(piece_t start, piece_t stop) : m_start(start), m_stop(stop) {};
+    static auto black() -> piece_range
     {
         return piece_range{piece_t::black_pawn, piece_t::black_king};
     }
-    static auto White() -> piece_range
+    static auto white() -> piece_range
     {
         return piece_range{piece_t::white_pawn, piece_t::white_king};
     }
-    static auto BlackNoKing() -> piece_range
+    static auto black_no_king() -> piece_range
     {
         return piece_range{piece_t::black_pawn, piece_t::black_queen};
     }
-    static auto WhiteNoKing() -> piece_range
+    static auto white_no_king() -> piece_range
     {
         return piece_range{piece_t::white_pawn, piece_t::white_queen};
     }
@@ -91,15 +91,15 @@ struct piece_range
     }
 
    private:
-    piece_t start;
-    piece_t stop;
+    piece_t m_start;
+    piece_t m_stop;
 };
 
 class BitBoard
 {
    private:
-    std::array<uint64_t, static_cast<int>(piece_t::piece_count)> board{};
-    static constexpr uint64_t TURN_BIT = 0b10;
+    std::array<uint64_t, static_cast<int>(piece_t::piece_count)> m_board{};
+    static constexpr uint64_t turn_bit = 0b10;
 
     static auto sq_from_name(char file, char rank) -> uint64_t;
 
@@ -107,13 +107,13 @@ class BitBoard
     static constexpr int num_squares = 64;
 
     static auto start_position() -> BitBoard;
-    BitBoard(const std::string &FEN);
+    BitBoard(const std::string &fen);
     BitBoard();
     [[nodiscard]] auto draw() const -> std::string;
     auto operator[](piece_t piece) const -> uint64_t;
     void apply_move(const Move &move);
     [[nodiscard]] auto whites_turn() const -> bool
     {
-        return (board[static_cast<int>(piece_t::info)] & TURN_BIT) != 0;
+        return (m_board[static_cast<int>(piece_t::info)] & turn_bit) != 0;
     }
 };

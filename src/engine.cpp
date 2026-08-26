@@ -56,7 +56,7 @@ void Engine::run(chrono::seconds timeout)
 
     thread search_thread(
         [this, &b_stop, &result]()
-        {
+        -> void {
             if (m_board.whites_turn())
             {
                 search_async<side_t::white>(result, m_board, b_stop);
@@ -187,14 +187,15 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard board) -> string
         switch (move.type)
         {
             case movType::QUIET:
-                out = string(1, piece_chars.at(static_cast<int>(move.pc1) % 6)) +
-                      square_coords.at(__builtin_ctzll(to_pos));
+                    const char piece_char = piece_chars.at(static_cast<int>(move.pc1) % 6);
+                out = format("{}x{}", piece_char, square_coords.at(__builtin_ctzll(to_pos)));
                 break;
             case movType::CAPTURE:
-
-                out = string(1, piece_chars.at(static_cast<int>(move.pc1) % 6)) + "x" +
-                      square_coords.at(__builtin_ctzll(to_pos));
-                break;
+                {
+                    const char piece_char = piece_chars.at(static_cast<int>(move.pc1) % 6);
+                    out = format("{}x{}", piece_char, square_coords.at(__builtin_ctzll(to_pos)));
+                    break;
+                }
             case movType::CASTLE_kingside:
                 out = "O-O";
                 break;

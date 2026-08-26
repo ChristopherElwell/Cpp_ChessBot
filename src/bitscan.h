@@ -1,32 +1,32 @@
 #pragma once
 #include <cstdint>
 
-struct BitScan
+struct bit_scan
 {
    public:
-    struct Iterator
+    struct iterator
     {
        private:
-        uint64_t mask;
-        uint64_t bit;
+        uint64_t m_mask;
+        uint64_t m_bit;
 
        public:
-        Iterator(uint64_t mask, uint64_t bit) : mask(mask), bit(bit) {}
-        auto operator*() const -> uint64_t { return bit; }
-        auto operator++() -> Iterator &
+        iterator(uint64_t mask, uint64_t bit) : m_mask(mask), m_bit(bit) {}
+        auto operator*() const -> uint64_t { return m_bit; }
+        auto operator++() -> iterator &
         {
-            mask &= (mask - 1);
-            bit = mask & -mask;
+            m_mask &= (m_mask - 1);
+            m_bit = m_mask & -m_mask;
             return *this;
         }
-        auto operator!=(const Iterator &other) const -> bool { return mask != other.mask; }
+        auto operator!=(const iterator &other) const -> bool { return m_mask != other.m_mask; }
     };
 
-    [[nodiscard]] auto begin() const -> Iterator { return Iterator{start, start & -start}; }
-    [[nodiscard]] auto static end() -> Iterator { return Iterator{0, 0}; }
+    [[nodiscard]] auto begin() const -> iterator { return iterator{m_start, m_start & -m_start}; }
+    [[nodiscard]] auto static end() -> iterator { return iterator{0, 0}; }
 
-    BitScan(uint64_t mask) : start(mask) {};
+    bit_scan(uint64_t mask) : m_start(mask) {};
 
    private:
-    uint64_t start;
+    uint64_t m_start;
 };
