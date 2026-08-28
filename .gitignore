@@ -13,6 +13,7 @@
 /testing/stockfish/
 /testing/testing_data/
 /build/
+/.vs/
 /bin/
 /out/
 /pieces/
