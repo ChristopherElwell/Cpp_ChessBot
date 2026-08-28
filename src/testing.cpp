@@ -37,7 +37,7 @@ const array<pair<string, array<uint64_t, 6>>, 6> perft_tests = {
     make_pair("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 "
               "10 ",
               array<uint64_t, 6>{46, 2079, 89890, 3894594, 164075551, 6923051137})};
-auto read_csv(const string &filename) -> vector<vector<string>>;
+auto read_csv(const filesystem::path &filename) -> vector<vector<string>>;
 }  // namespace
 
 template <side_t Side>
@@ -107,12 +107,12 @@ void run_perft_test(int max_draft)
 
 void test_puzzles(size_t count)
 {
-    const vector<vector<string>> pzls = read_csv(priv::WIN_AT_CHESS_FILE);
+    const vector<vector<string>> pzls = read_csv(priv::win_at_chess_file);
     size_t idx = 0;
     int passed = 0;
     Engine engine;
     count = min(count, pzls.size());
-    const auto clock_start = chrono::high_resolution_clock::now();
+    chrono::milliseconds sum_time = {};
     for (auto pzl : pzls)
     {
         const string &fen = pzl[0];
@@ -122,36 +122,43 @@ void test_puzzles(size_t count)
         {
             break;
         }
-        cout << "\n\nRUNNING TESTS: " << pzl_id << "\n" << fen << "\n";
+        LOG("\nRUNNING TESTS: {}\n{}\n", pzl_id, fen);
+
+        const auto clock_start = chrono::high_resolution_clock::now();
+
         engine.load(fen);
         engine.run(6);
-        print("run done\n");
+        const auto clock_end = chrono::high_resolution_clock::now();
+        sum_time += chrono::duration_cast<chrono::milliseconds>(clock_end - clock_start);
+
         if (engine.get_algebraic() == answer)
         {
-            cout << "\nPASSED [" << answer << "]\n";
+            LOG("PASSED [{}]", answer);
             passed++;
         }
         else
         {
-            print("\nFAILED | Bot Move: [{}] Correct Move: [{}]\n", engine.get_algebraic(), answer);
+            LOG("\nFAILED | Bot Move: [{}] Correct Move: [{}]\n", engine.get_algebraic(), answer);
         }
     }
-    const auto clock_end = chrono::high_resolution_clock::now();
     LOG("\n\nPASS RATE: {}/{}", passed, count);
-    LOG("Time to complete: {}",
-        chrono::duration_cast<chrono::milliseconds>(clock_end - clock_start));
+    LOG("Time to complete: {}", sum_time);
 }
 
 namespace
 {
-auto read_csv(const string &filename) -> vector<vector<string>>
+auto read_csv(const filesystem::path &filename) -> vector<vector<string>>
 {
     vector<vector<string>> result;
     ifstream file(filename);
 
     if (!file.is_open())
     {
-        cerr << "Error opening file\n";
+        LOG("Error opening file: {}. Error: {}", filename.string(), errno);
+        std::println("filename: '{}'", filename.string());
+        std::println("exists: {}", std::filesystem::exists(filename));
+        std::println("absolute: {}", std::filesystem::absolute(filename).string());
+        std::println("is regular: {}", std::filesystem::is_regular_file(filename));
         return result;
     }
 
