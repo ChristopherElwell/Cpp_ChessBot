@@ -1,20 +1,23 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <span>
 #include <string_view>
 
 #include "engine.h"
 #include "testing.h"
 
+using namespace std;
+
 namespace
 {
 
-auto parse_arguments(int argc, char* argv[]) -> arguments;
+auto parse_arguments(int argc, span<char* const> argv) -> arguments;
 
 }
 auto main(int argc, char* argv[]) -> int
 {
-    const arguments args = parse_arguments(argc, argv);
+    const arguments args = parse_arguments(argc, span(argv, static_cast<size_t>(argc)));
 
     switch (args.mode)
     {
@@ -39,7 +42,7 @@ auto main(int argc, char* argv[]) -> int
 
 namespace
 {
-auto parse_arguments(int argc, char* argv[]) -> arguments
+auto parse_arguments(int argc, span<char* const> argv) -> arguments
 {
     arguments args{};
 

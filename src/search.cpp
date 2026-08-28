@@ -58,41 +58,46 @@ constexpr auto mate_eval(const MoveGen& move_gen, int ply) noexcept -> int
 }  // namespace
 
 template <side_t Side>
-void Engine::search_async(pair<int, unique_ptr<const result_t>>& result, BitBoard board,
-                          atomic_bool& b_stop)
+void Engine::search_async(search_state& state)
 {
-    pair<int, unique_ptr<const result_t>> temp_result = {init_eval<Side>, nullptr};
     int depth_completed = 0;
-    for (int depth = 1; !b_stop; depth++)
+    PVTable pv_completed = {};
+    for (int depth = 1; !state.b_stop; depth++)
     {
-        temp_result = search<Side>(board, depth, alpha_init, beta_init, 0, b_stop);
+        // No use of this eval
+        search<Side>(search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0},
+                     state);
 
-        if (!b_stop && temp_result.second)
+        if (!state.b_stop)
         {
-            result = std::move(temp_result);
             depth_completed = depth;
+            pv_completed = state.pv;
         }
     }
     LOG("Completed depth: {}", depth_completed);
+    state.pv = pv_completed;
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 template <side_t Side>
-auto Engine::search(BitBoard& board, int depth, int alpha, int beta, int ply, atomic_bool& b_stop)
-    -> pair<int, unique_ptr<result_t>>
+auto Engine::search(search_args args, search_state& state) -> int
 {
+    auto [depth, alpha, beta, ply] = args;
+    auto& [board, b_stop, pv] = state;
     // instantly stop searching and cleanup
     if (b_stop.load(memory_order_relaxed))
     {
-        return {0, nullptr};
+        return 0;
     }
+
+    pv.clear(ply);
+
     // if end of iteration, return evaluation of board
     if (depth == 0)
     {
-        return {evaluate(board), nullptr};
+        return evaluate(board);
     }
 
-    auto p_result = make_unique<result_t>();
     Move best_move = {};
     bool b_found_a_move = false;
     int best_eval = init_eval<Side>;
@@ -110,7 +115,8 @@ auto Engine::search(BitBoard& board, int depth, int alpha, int beta, int ply, at
             continue;
         }
 
-        auto [eval, child_result] = search<~Side>(board, depth - 1, alpha, beta, ply + 1, b_stop);
+        const int eval = search<~Side>(
+            search_args{.depth = depth - 1, .alpha = alpha, .beta = beta, .ply = ply + 1}, state);
         board.apply_move(move);
 
         if constexpr (Side == side_t::white)
@@ -120,7 +126,7 @@ auto Engine::search(BitBoard& board, int depth, int alpha, int beta, int ply, at
                 best_eval = eval;
                 best_move = move;
                 b_found_a_move = true;
-                p_result->next = std::move(child_result);
+                pv.update(ply, best_move);
             }
             alpha = max(alpha, best_eval);
             if (alpha >= beta)
@@ -135,7 +141,7 @@ auto Engine::search(BitBoard& board, int depth, int alpha, int beta, int ply, at
                 best_eval = eval;
                 best_move = move;
                 b_found_a_move = true;
-                p_result->next = std::move(child_result);
+                pv.update(ply, best_move);
             }
             beta = min(beta, best_eval);
             if (beta <= alpha)
@@ -144,19 +150,17 @@ auto Engine::search(BitBoard& board, int depth, int alpha, int beta, int ply, at
             }
         }
     }
+
+    // If no moves, must be either stalemate or checkmate
     if (!b_found_a_move)
     {
-        return {mate_eval<Side>(move_gen, ply), nullptr};
+        return mate_eval<Side>(move_gen, ply);
     }
-    p_result->best_move = best_move;
-    return {best_eval, std::move(p_result)};
+
+    return best_eval;
 }
 
-template void Engine::search_async<side_t::white>(pair<int, unique_ptr<const result_t>>& result,
-                                                  BitBoard board, atomic_bool& b_stop);
-template void Engine::search_async<side_t::black>(pair<int, unique_ptr<const result_t>>& result,
-                                                  BitBoard board, atomic_bool& b_stop);
-template auto Engine::search<side_t::white>(BitBoard&, int, int, int, int, atomic_bool& b_stop)
-    -> std::pair<int, std::unique_ptr<result_t>>;
-template auto Engine::search<side_t::black>(BitBoard&, int, int, int, int, atomic_bool& b_stop)
-    -> std::pair<int, std::unique_ptr<result_t>>;
+template void Engine::search_async<side_t::white>(search_state& state);
+template void Engine::search_async<side_t::black>(search_state& state);
+template auto Engine::search<side_t::white>(search_args args, search_state& state) -> int;
+template auto Engine::search<side_t::black>(search_args args, search_state& state) -> int;

@@ -21,73 +21,59 @@
 
 #include "bitboard.h"
 #include "data.h"
+#include "eval.h"
 #include "move.h"
 #include "move_gen.h"
+#include "pv.h"
 
 using namespace std;
 
 void Engine::run(int depth)
 {
     unique_ptr<const result_t> p_result;
-    atomic_bool b_stop = false;
+    auto state = search_state{.board = m_board, .b_stop = false, .pv = {}};
     if (m_board.whites_turn())
     {
-        tie(m_evaluation, p_result) = search<side_t::white>(
-            m_board, depth, numeric_limits<int>::min(), numeric_limits<int>::max(), 0, b_stop);
+        search<side_t::white>(
+            search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0}, state);
     }
     else
     {
-        tie(m_evaluation, p_result) = search<side_t::black>(
-            m_board, depth, numeric_limits<int>::min(), numeric_limits<int>::max(), 0, b_stop);
+        search<side_t::black>(
+            search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0}, state);
     }
-    if (p_result)
-    {
-        compute_results(p_result);
-    }
-    else
-    {
-        print("ERROR: Result is nullptr\n``");
-    }
+    m_uci = move_to_uci(state.pv.best_move());
+    m_algebraic = move_to_algebraic(state.pv.best_move());
+#ifdef DEBUG
+    convert_pv(pv_table);
+#endif
 }
 
 void Engine::run(chrono::seconds timeout)
 {
-    atomic_bool b_stop = false;
-
-    pair<int, unique_ptr<const result_t>> result = {0, nullptr};
+    auto state = search_state{.board = m_board, .b_stop = false, .pv = {}};
 
     thread search_thread(
-        [this, &b_stop, &result]() -> void
+        [this, &state]() -> void
         {
             if (m_board.whites_turn())
             {
-                search_async<side_t::white>(result, m_board, b_stop);
+                search_async<side_t::white>(state);
             }
             else
             {
-                search_async<side_t::black>(result, m_board, b_stop);
+                search_async<side_t::black>(state);
             }
         });
 
     this_thread::sleep_for(timeout);
-    b_stop.store(true, memory_order_relaxed);
+    state.b_stop.store(true, memory_order_relaxed);
     search_thread.join();
-
-    if (result.second)
-    {
-        compute_results(result.second);
-    }
-    else
-    {
-        print("ERROR: Result is nullptr\n");
-    }
-}
-
-void Engine::compute_results(const unique_ptr<const result_t>& p_result)
-{
-    m_uci = move_to_uci(p_result->best_move);
-    m_algebraic = move_to_algebraic(p_result->best_move);
-    fill_pv(p_result);
+    m_uci = move_to_uci(state.pv.best_move());
+    m_algebraic = move_to_algebraic(state.pv.best_move());
+#ifdef DEBUG
+    convert_pv(pv_table);
+#endif
 }
 
 auto Engine::get_uci() -> const string& { return m_uci; }
@@ -96,20 +82,14 @@ auto Engine::get_algebraic() -> const string& { return m_algebraic; }
 
 void Engine::load(const string& fen) { m_board = BitBoard(fen); }
 
-void Engine::fill_pv(const unique_ptr<const result_t>& p_result)
+void Engine::convert_pv(const PVTable& pv_table)
 {
     m_pv.clear();
-    const result_t* p_node = p_result.get();
     BitBoard board = m_board;
-    while (p_node != nullptr)
+    for (const auto& mov : pv_table.get_pv_at_ply(0))
     {
-        m_pv.push_back(move_to_uci(p_node->best_move, board));
-        board.apply_move(p_node->best_move);
-        if (!p_node->next)
-        {
-            break;
-        }
-        p_node = p_node->next.get();
+        m_pv.push_back(move_to_uci(mov, board));
+        board.apply_move(mov);
     }
 }
 
