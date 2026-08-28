@@ -26,6 +26,7 @@ target_sources(ElwellBot PRIVATE
     src/move_gen.cpp
     src/move.cpp
     src/search.cpp
+    src/pv.cpp
     src/testing.cpp
 )
 
