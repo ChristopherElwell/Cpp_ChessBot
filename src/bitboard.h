@@ -113,8 +113,9 @@ public:
     [[nodiscard]] auto draw() const -> std::string;
     auto operator[](piece_t piece) const -> uint64_t;
     void apply_move(const Move& move);
-    [[nodiscard]] auto whites_turn() const -> bool
+    [[nodiscard]] auto side_to_move() const -> side_t
     {
-        return (m_board[static_cast<int>(piece_t::info)] & turn_bit) != 0;
+        return (m_board[static_cast<int>(piece_t::info)] & turn_bit) != 0 ? side_t::white
+                                                                          : side_t::black;
     }
 };

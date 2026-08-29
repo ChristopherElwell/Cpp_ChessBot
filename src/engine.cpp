@@ -14,6 +14,7 @@
 #include <memory>
 #include <print>
 #include <ranges>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <tuple>
@@ -29,53 +30,12 @@
 
 using namespace std;
 
-void Engine::run(int depth)
+namespace
 {
-    unique_ptr<const result_t> p_result;
-    auto state = search_state{.board = m_board, .b_stop = false, .pv = {}};
-    if (m_board.whites_turn())
-    {
-        search<side_t::white>(
-            search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0}, state);
-    }
-    else
-    {
-        search<side_t::black>(
-            search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0}, state);
-    }
-    m_uci = move_to_uci(state.pv.best_move());
-    m_algebraic = move_to_algebraic(state.pv.best_move());
-#ifdef DEBUG
-    convert_pv(state.pv);
-#endif
-}
-
-void Engine::run(chrono::seconds timeout)
-{
-    auto state = search_state{.board = m_board, .b_stop = false, .pv = {}};
-
-    thread search_thread(
-        [this, &state]() -> void
-        {
-            if (m_board.whites_turn())
-            {
-                search_async<side_t::white>(state);
-            }
-            else
-            {
-                search_async<side_t::black>(state);
-            }
-        });
-
-    this_thread::sleep_for(timeout);
-    state.b_stop.store(true, memory_order_relaxed);
-    search_thread.join();
-    m_uci = move_to_uci(state.pv.best_move());
-    m_algebraic = move_to_algebraic(state.pv.best_move());
-#ifdef DEBUG
-    convert_pv(state.pv);
-#endif
-}
+constexpr int default_moves_left = 30;
+constexpr int buffer_ms = 50;
+constexpr int min_time_ms = 10;
+}  // namespace
 
 auto Engine::get_uci() -> const string& { return m_uci; }
 
@@ -85,11 +45,11 @@ void Engine::load(const string& fen) { m_board = BitBoard(fen); }
 
 void Engine::convert_pv(const PVTable& pv_table)
 {
-    m_pv.clear();
+    m_pv_uci.clear();
     BitBoard board = m_board;
     for (const auto& mov : pv_table.get_pv_at_ply(0))
     {
-        m_pv.push_back(move_to_uci(mov, board));
+        m_pv_uci.push_back(move_to_uci(mov, board));
         board.apply_move(mov);
     }
 }
@@ -194,7 +154,7 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard& board) -> string
     }
     auto move_gen = MoveGen(board);
     board.apply_move(move);
-    if (board.whites_turn())
+    if (board.side_to_move() == side_t::white)
     {
         if (move_gen.is_king_in_check<side_t::white>())
         {
@@ -239,34 +199,14 @@ auto Engine::bitboard_to_string(const uint64_t& board) -> string
 
 auto Engine::split_into_tokens(const string& str) -> vector<string>
 {
-    vector<string> result;
-
-    auto start = str.begin();
-
-    while (start != str.end())
+    std::vector<std::string> tokens;
+    std::istringstream iss(str);
+    std::string token;
+    while (iss >> token)
     {
-        // Find opening bracket
-        start = std::find(start, str.end(), '[');
-        if (start == str.end())
-        {
-            break;
-        }
-
-        start++;
-
-        auto end = std::find(start, str.end(), ']');
-        if (end == str.end())
-        {
-            break;
-        }
-
-        // Extract token
-        result.emplace_back(start, end);
-
-        start = end + 1;
+        tokens.push_back(token);
     }
-
-    return result;
+    return tokens;
 }
 
 auto Engine::parse_and_set_position(const string& message) -> bool
@@ -287,6 +227,12 @@ auto Engine::parse_and_set_position(const string& message) -> bool
             "\"{}\"",
             tokens.at(1));
         return false;
+    }
+
+    for (const auto& uci : tokens | ranges::views::drop(3))
+    {
+        const auto mov = uci_to_move(uci);
+        m_board.apply_move(mov);
     }
 
     return true;
@@ -449,37 +395,102 @@ auto Engine::uci_to_move(const string& uci, BitBoard& board) -> Move
     return Move::quiet(start_pc, start_sq | end_sq, info_xor, board[piece_t::info]);
 }
 
-auto Engine::handle_go(const std::string& type_str, const std::string& value_str) -> bool
+auto Engine::parse_run(const string& message) -> bool
 {
-    int value = 0;
-    try
+    const auto tokens = split_into_tokens(message);
+
+    auto parse_int = [](const string& tok) -> optional<int>
     {
-        value = stoi(value_str);
-    }
-    catch (exception& e)
+        try
+        {
+            return stoi(tok);
+        }
+        catch (const exception& e)
+        {
+            println("Failed to convert [{}] into integer", tok);
+            return nullopt;
+        }
+    };
+
+    if (tokens.at(1) == "depth")
     {
-        DEBUG_LOG("Failed at stoi: [{}]", value_str);
-        return false;
-    }
-    if (type_str == "depth")
-    {
-        DEBUG_LOG("Running at set depth: {}", value);
-        run(value);
-        DEBUG_LOG("Returning move: {}", m_algebraic);
-        DEBUG_LOG("PV: {}",
-                  m_pv | std::views::join_with(std::string(", ")) | std::ranges::to<std::string>());
+        const auto depth = parse_int(tokens.at(2));
+        if (!depth)
+        {
+            return false;
+        }
+        run(*depth);
         return true;
     }
-    if (type_str == "time")
+    if (tokens.at(1) == "movetime")
     {
-        DEBUG_LOG("Running at set time: {}s", value);
-        run(chrono::seconds(value));
-        DEBUG_LOG("Returning move: {}", m_algebraic);
-        DEBUG_LOG("PV: {}",
-                  m_pv | std::views::join_with(std::string(", ")) | std::ranges::to<std::string>());
+        const auto num_ms = parse_int(tokens.at(2));
+        if (!num_ms)
+        {
+            return false;
+        }
+        run(chrono::milliseconds{*num_ms});
         return true;
     }
-    return false;
+    if (tokens.at(1) == "infinite")
+    {
+        run();
+        return true;
+    }
+
+    // --- clock-based time control: wtime/btime/winc/binc/movestogo ---
+    optional<int> wtime;
+    optional<int> btime;
+    optional<int> winc;
+    optional<int> binc;
+    optional<int> movestogo;
+    for (const auto& pair : tokens | ranges::views::drop(1) | ranges::views::chunk(2))
+    {
+        const auto& token = pair[0];
+        const auto& value = pair[1];
+        if (token == "wtime")
+        {
+            wtime = parse_int(value);
+        }
+        else if (token == "btime")
+        {
+            btime = parse_int(value);
+        }
+        else if (token == "winc")
+        {
+            winc = parse_int(value);
+        }
+        else if (token == "binc")
+        {
+            binc = parse_int(value);
+        }
+        else if (token == "movestogo")
+        {
+            movestogo = parse_int(value);
+        }
+    }
+
+    if (wtime || btime)
+    {
+        const bool white_to_move = m_board.side_to_move() == side_t::white;
+        const int my_time = (white_to_move ? wtime : btime).value_or(0);
+        const int my_inc = (white_to_move ? winc : binc).value_or(0);
+
+        // Very basic time management: budget a fraction of remaining time per move.
+        // Assume ~30 moves left if movestogo wasn't given (sudden death).
+        const int moves_left = movestogo.value_or(default_moves_left);
+        int allocated_ms = (my_time / moves_left) + my_inc;
+
+        // Never allocate more than what's left, and leave a small safety buffer.
+        allocated_ms = std::min(allocated_ms, my_time - buffer_ms);
+        allocated_ms = std::max(allocated_ms, min_time_ms);
+
+        run(chrono::milliseconds{allocated_ms});
+        return true;
+    }
+
+    run();
+    return true;
 }
 
 void Engine::uci_loop()
@@ -497,26 +508,57 @@ void Engine::uci_loop()
         DEBUG_LOG("Received [{}]", message);
         if (message == "uci")
         {
-            print("id name ElwellBot\nid author CElwell\nuciok");
+            println("id name ElwellBot\nid author CElwell\nuciok");
             continue;
         }
         if (message == "isready")
         {
-            print("readyok");
+            println("readyok");
             continue;
         }
         if (message.starts_with("position"))
         {
-            parse_and_set_position(message);
+            bool b_success = parse_and_set_position(message);
+            if (!b_success)
+            {
+                LOG("Error while setting position");
+            }
             continue;
         }
         if (message.starts_with("go"))
         {
-            // parse_run(message);
-            print("{}", m_uci);
+            bool b_success = parse_run(message);
+            if (!b_success)
+            {
+                LOG("Error while starting search. Ceasing search");
+                m_stop_time = chrono::high_resolution_clock::now();
+            }
+        }
+        if (message.starts_with("stop"))
+        {
+            m_b_stop.store(true, memory_order_relaxed);
+            m_stop_cv.notify_all();
+            if (m_search_thread.joinable())
+            {
+                m_search_thread.join();
+            }
+            if (m_timer_thread.joinable())
+            {
+                m_timer_thread.join();
+            }
         }
         if (message == "quit")
         {
+            m_b_stop.store(true, memory_order_relaxed);
+            m_stop_cv.notify_all();
+            if (m_search_thread.joinable())
+            {
+                m_search_thread.join();
+            }
+            if (m_timer_thread.joinable())
+            {
+                m_timer_thread.join();
+            }
             break;
         }
     }

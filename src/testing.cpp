@@ -79,7 +79,7 @@ void run_perft_test(int max_draft)
         for (int idx = 0; idx < max_draft; idx++)
         {
             uint64_t perft = 0;
-            if (board.whites_turn())
+            if (board.side_to_move() == side_t::white)
             {
                 perft = perft_search<side_t::white>(board, idx + 1);
             }
