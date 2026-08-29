@@ -33,9 +33,3 @@ target_sources(ElwellBot PRIVATE
 target_compile_definitions(ElwellBot PRIVATE 
     $<$<CONFIG:Debug>:DEBUG>
 )
-
-target_compile_options(ElwellBot PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>:/W4>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
-    $<$<CONFIG:Release>:-O3>
-)
