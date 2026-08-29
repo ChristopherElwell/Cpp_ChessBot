@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <print>
+#include <ranges>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -143,6 +144,63 @@ void test_puzzles(size_t count)
     }
     LOG("\n\nPASS RATE: {}/{}", passed, count);
     LOG("Time to complete: {}", sum_time);
+}
+
+void test_move_conversion()
+{
+    Engine engine;
+    BitBoard board = BitBoard("r1b1kb2/pPppp1pp/n1p5/1q3pPr/8/2N5/1PP1PP2/R1BQK2R w KQq f6 0 1");
+    vector<string> test_moves = {"e1g1",  "h1h5",  "a1a5", "a1a6", "b7a8q",
+                                 "b7b8n", "b7c8b", "e1d2", "c1f4"};
+    vector<string> post_move_fen = {"r1b1kb2/pPppp1pp/n1p5/1q3pPr/8/2N5/1PP1PP2/R1BQ1RK1 b q -",
+                                    "r1b1kb2/pPppp1pp/n1p5/1q3pPR/8/2N5/1PP1PP2/R1BQK3 b Qq -",
+                                    "r1b1kb2/pPppp1pp/n1p5/Rq3pPr/8/2N5/1PP1PP2/2BQK2R b Kq -",
+                                    "r1b1kb2/pPppp1pp/R1p5/1q3pPr/8/2N5/1PP1PP2/2BQK2R b Kq -",
+                                    "Q1b1kb2/p1ppp1pp/n1p5/1q3pPr/8/2N5/1PP1PP2/R1BQK2R b KQ -",
+                                    "rNb1kb2/p1ppp1pp/n1p5/1q3pPr/8/2N5/1PP1PP2/R1BQK2R b KQq -",
+                                    "r1B1kb2/p1ppp1pp/n1p5/1q3pPr/8/2N5/1PP1PP2/R1BQK2R b KQq -",
+                                    "r1b1kb2/pPppp1pp/n1p5/1q3pPr/8/2N5/1PPKPP2/R1BQ3R b q -",
+                                    "r1b1kb2/pPppp1pp/n1p5/1q3pPr/5B2/2N5/1PP1PP2/R2QK2R b KQq -"};
+    int success = 0;
+    for (const auto &fen : post_move_fen)
+    {
+        const auto fen_converted = BitBoard(fen).to_fen();
+        if (fen_converted != fen)
+        {
+            println("Failed to encode and unencode: \n\t[{}]\n\t[{}]", fen, fen_converted);
+        }
+        else
+        {
+            success++;
+        }
+    }
+    println("Fen conversion test complete. Success: {}/{}", success, post_move_fen.size());
+    success = 0;
+    for (const auto &[uci, fen] : ranges::views::zip(test_moves, post_move_fen))
+    {
+        BitBoard this_board = board;
+        bool b_success = true;
+        const Move mov = Engine::uci_to_move(uci, this_board);
+        const string uci_converted = Engine::move_to_uci(mov, this_board);
+        if (uci != uci_converted)
+        {
+            print("Failed to encode and unencode: [{}] -> [{}]", uci, uci_converted);
+            b_success = false;
+            continue;
+        }
+        this_board.apply_move(mov);
+        const string fen_converted = this_board.to_fen();
+        this_board.apply_move(mov);
+        if (fen != fen_converted)
+        {
+            println(
+                "Failed to encode and unencode with move [{}]: \n\tCorrect: [{}]\n\t  Wrong: [{}]",
+                uci, fen, fen_converted);
+            b_success = false;
+        }
+        success += b_success ? 1 : 0;
+    }
+    println("Move conversion test complete. Success: {}/{}", success, post_move_fen.size());
 }
 
 namespace

@@ -35,6 +35,10 @@ auto main(int argc, char* argv[]) -> int
         case mode::perft:
             run_perft_test(args.count);
             break;
+
+        case mode::conversion:
+            test_move_conversion();
+            break;
     }
 
     return 0;
@@ -71,6 +75,10 @@ auto parse_arguments(int argc, span<char* const> argv) -> arguments
 
             args.mode = mode::perft;
             args.count = std::stoi(argv[++i]);
+        }
+        else if (arg == "--conversion")
+        {
+            args.mode = mode::conversion;
         }
         else if (arg == "--help" || arg == "-h")
         {
