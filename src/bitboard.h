@@ -44,13 +44,13 @@ inline auto operator-(const piece_t pc_a, const piece_t pc_b) -> int
 
 struct piece_range
 {
-   public:
+public:
     struct iterator
     {
-       private:
+    private:
         int m_value;
 
-       public:
+    public:
         auto operator*() const -> piece_t { return static_cast<piece_t>(m_value); }
         auto operator++() -> iterator&
         {
@@ -90,24 +90,25 @@ struct piece_range
         return piece_range{piece_t::white_pawn, piece_t::black_king};
     }
 
-   private:
+private:
     piece_t m_start;
     piece_t m_stop;
 };
 
 class BitBoard
 {
-   private:
+private:
     std::array<uint64_t, static_cast<int>(piece_t::piece_count)> m_board{};
     static constexpr uint64_t turn_bit = 0b10;
 
     static auto sq_from_name(char file, char rank) -> uint64_t;
 
-   public:
+public:
     static constexpr int num_squares = 64;
 
     static auto start_position() -> BitBoard;
     BitBoard(const std::string& fen);
+    [[nodiscard]] auto to_fen() const -> std::string;
     BitBoard();
     [[nodiscard]] auto draw() const -> std::string;
     auto operator[](piece_t piece) const -> uint64_t;
