@@ -334,9 +334,6 @@ inline constexpr std::array<uint64_t, 15> diag_down = {0,
 
 static constexpr uint64_t sq_a8 = 0x8000000000000000;
 
-static const std::array<const char *, 12> piece_emojis = {"♙", "♘", "♗", "♖", "♕", "♔",
-                                                          "♟", "♞", "♝", "♜", "♛", "♚"};
-
 // helpers
 const std::array<std::string_view, BitBoard::num_squares> square_coords = {
     "h1", "g1", "f1", "e1", "d1", "c1", "b1", "a1", "h2", "g2", "f2", "e2", "d2", "c2", "b2", "a2",

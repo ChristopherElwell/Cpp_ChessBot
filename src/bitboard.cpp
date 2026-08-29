@@ -250,20 +250,15 @@ void BitBoard::apply_move(const Move& move)
 
 auto BitBoard::draw() const -> string
 {
-    const string reset = "\033[0m";
-    const string light = "\033[48;5;187m";
-    const string dark = "\033[48;5;108m";
-
     string out = "8 ";
     for (int i = 0; i < BitBoard::num_squares; i++)
     {
-        out += (((i % 8) + (i / 8)) % 2 == 0 ? light : dark);
         int piece_found = 0;
         for (const auto piece : piece_range::all())
         {
             if ((operator[](piece) & (1ULL << (BitBoard::num_squares - 1 - i))) != 0)
             {
-                out += piece_emojis[static_cast<int>(piece)];
+                out += piece_t_to_piece_symbol.at(piece);
                 out += " ";
                 piece_found = 1;
                 break;
@@ -275,10 +270,10 @@ auto BitBoard::draw() const -> string
         }
         if ((i + 1) % 8 == 0 && i != BitBoard::num_squares - 1)
         {
-            out += format("{}\n{} ", reset, 8 - ((i + 1) / 8));
+            out += format("\n{} ", 8 - ((i + 1) / 8));
         }
     }
-    return out + reset + "\n  a b c d e f g h\n\n";
+    return out + "\n  a b c d e f g h\n\n";
 }
 
 auto BitBoard::sq_from_name(char file, char rank) -> uint64_t
