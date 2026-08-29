@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "bitscan.h"
 #include "data.h"
 #include "move.h"
 
@@ -26,12 +27,6 @@ auto BitBoard::start_position() -> BitBoard { return {starting_pos}; }
 BitBoard::BitBoard(const string& fen)
 {
     int sqr = 0;
-    unordered_map<char, piece_t> piece_t_code_map = {
-        {'P', piece_t::white_pawn}, {'N', piece_t::white_knight}, {'B', piece_t::white_bishop},
-        {'R', piece_t::white_rook}, {'Q', piece_t::white_queen},  {'K', piece_t::white_king},
-        {'p', piece_t::black_pawn}, {'n', piece_t::black_knight}, {'b', piece_t::black_bishop},
-        {'r', piece_t::black_rook}, {'q', piece_t::black_queen},  {'k', piece_t::black_king},
-    };
     int idx = 0;
     for (const char piece : fen)
     {
@@ -49,7 +44,7 @@ BitBoard::BitBoard(const string& fen)
             case 'r':
             case 'q':
             case 'k':
-                m_board[static_cast<int>(piece_t_code_map[piece])] |=
+                m_board[static_cast<int>(piece_symbol_to_piece_t.at(piece))] |=
                     1LL << (BitBoard::num_squares - 1 - sqr);
                 sqr++;
                 break;
@@ -130,9 +125,104 @@ BitBoard::BitBoard(const string& fen)
                                                   m_board[static_cast<int>(piece_t::black_pcs)];
 }
 
+auto BitBoard::to_fen() const -> string
+{
+    // index -> char lookup, built from each piece bitboard via bit_scan
+    std::array<char, BitBoard::num_squares> board_chars{};
+    board_chars.fill(0);
+
+    for (const auto piece : piece_range::all())
+    {
+        for (const uint64_t bit : bit_scan(m_board[static_cast<int>(piece)]))
+        {
+            const int index = std::countr_zero(bit);  // requires <bit>, C++20
+            board_chars[index] = piece_t_to_piece_symbol.at(piece);
+        }
+    }
+
+    // --- piece placement, rank 8 -> 1, file a -> h ---
+    string fen;
+    for (int rank = 8; rank >= 1; --rank)
+    {
+        int empty_count = 0;
+        for (int file = 0; file <= 7; ++file)
+        {
+            const int index = (8 * rank) - file - 1;
+            const char piece_symbol = board_chars[index];
+            if (piece_symbol == 0)
+            {
+                ++empty_count;
+                continue;
+            }
+            if (empty_count > 0)
+            {
+                fen += std::to_string(empty_count);
+                empty_count = 0;
+            }
+            fen += piece_symbol;
+        }
+        if (empty_count > 0)
+        {
+            fen += std::to_string(empty_count);
+        }
+        if (rank != 1)
+        {
+            fen += '/';
+        }
+    }
+
+    // --- side to move ---
+    const uint64_t info = m_board[static_cast<int>(piece_t::info)];
+    fen += ' ';
+    fen += (info & turn_bit) ? 'w' : 'b';
+
+    // --- castling rights ---
+    fen += ' ';
+    string rights;
+    if (info & castling::white_kingside_right)
+    {
+        rights += 'K';
+    }
+    if (info & castling::white_queenside_right)
+    {
+        rights += 'Q';
+    }
+    if (info & castling::black_kingside_right)
+    {
+        rights += 'k';
+    }
+    if (info & castling::black_queenside_right)
+    {
+        rights += 'q';
+    }
+    fen += rights.empty() ? "-" : rights;
+
+    // --- en passant square ---
+    fen += ' ';
+    const uint64_t known_flags = turn_bit | castling::white_kingside_right |
+                                 castling::white_queenside_right | castling::black_kingside_right |
+                                 castling::black_queenside_right;
+    const uint64_t ep_bits = info & ~known_flags;
+    if (ep_bits == 0)
+    {
+        fen += '-';
+    }
+    else
+    {
+        const int index = std::countr_zero(ep_bits);
+        const int sqr = BitBoard::num_squares - 1 - index;  // inverse of the constructor's packing
+        const int rank = 8 - (sqr / 8);
+        const char file = static_cast<char>('a' + (sqr % 8));
+        fen += file;
+        fen += std::to_string(rank);
+    }
+
+    return fen;
+}
+
 void BitBoard::apply_move(const Move& move)
 {
-    assert(move.type != mov_type::moves_termination);
+    assert(move.type != move_type_t::moves_termination);
     m_board[static_cast<int>(move.pc1)] ^= move.mov1;
     m_board[static_cast<int>(move.pc2)] ^= move.mov2;
     m_board[static_cast<int>(move.pc3)] ^= move.mov3;

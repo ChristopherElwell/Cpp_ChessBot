@@ -4,7 +4,7 @@
 
 #include "bitboard.h"
 
-enum class mov_type : uint8_t
+enum class move_type_t : uint8_t
 {
     quiet,
     capture,
@@ -15,29 +15,29 @@ enum class mov_type : uint8_t
     moves_termination
 };
 
-inline auto move_type_to_string(mov_type move_type) -> std::string
+inline auto move_type_to_string(move_type_t move_type) -> std::string
 {
     switch (move_type)
     {
-        case mov_type::quiet:
+        case move_type_t::quiet:
             return "Quiet";
-        case mov_type::capture:
+        case move_type_t::capture:
             return "Capture";
-        case mov_type::promote:
+        case move_type_t::promote:
             return "Promote";
-        case mov_type::capture_promote:
+        case move_type_t::capture_promote:
             return "Capture & Promote";
-        case mov_type::castle_kingside:
+        case move_type_t::castle_kingside:
             return "Castle Kingside";
-        case mov_type::castle_queenside:
+        case move_type_t::castle_queenside:
             return "Castle Queenside";
-        case mov_type::moves_termination:
+        case move_type_t::moves_termination:
             return "Bookend";
     }
     return "Unknown";
 }
 
-constexpr auto operator-(const mov_type type_a, const mov_type type_b) -> int
+constexpr auto operator-(const move_type_t type_a, const move_type_t type_b) -> int
 {
     return static_cast<int>(type_a) - static_cast<int>(type_b);
 }
@@ -53,13 +53,13 @@ struct Move
     uint64_t mov3;
 
     uint64_t info;
-    mov_type type;
+    move_type_t type;
     // NOLINTEND(misc-non-private-member-variables-in-classes)
     auto operator=(const Move &) -> Move & = default;
 
     Move();
     Move(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, piece_t pc3, uint64_t mov3,
-         uint64_t info, mov_type type);
+         uint64_t info, move_type_t type);
 
     ~Move() = default;
     Move(const Move &) = default;

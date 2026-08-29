@@ -675,10 +675,10 @@ auto MoveGen::compare_moves(const Move &mov_a, const Move &mov_b) -> bool
     // If move types are the same, compare based on move type
     switch (mov_a.type)
     {
-        case mov_type::quiet:
+        case move_type_t::quiet:
             return mov_a.pc1 > mov_b.pc1;  // Higher pc2 comes first
 
-        case mov_type::capture:
+        case move_type_t::capture:
             // Primary: compare captured pieces (pc2)
             if (mov_b.pc2 != mov_a.pc2)
             {
@@ -687,10 +687,10 @@ auto MoveGen::compare_moves(const Move &mov_a, const Move &mov_b) -> bool
             // Secondary: compare capturing pieces (pc1)
             return mov_b.pc1 > mov_a.pc1;  // Lower pc1 comes first
 
-        case mov_type::promote:
+        case move_type_t::promote:
             return mov_a.pc2 > mov_b.pc2;  // Higher promotion piece comes first
 
-        case mov_type::capture_promote:
+        case move_type_t::capture_promote:
             // Primary: compare promotion piece (pc3)
             if (mov_b.pc3 != mov_a.pc3)
             {

@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <unordered_map>
 
 #include "bitboard.h"
 
@@ -342,6 +343,31 @@ const std::array<std::string_view, BitBoard::num_squares> square_coords = {
     "h3", "g3", "f3", "e3", "d3", "c3", "b3", "a3", "h4", "g4", "f4", "e4", "d4", "c4", "b4", "a4",
     "h5", "g5", "f5", "e5", "d5", "c5", "b5", "a5", "h6", "g6", "f6", "e6", "d6", "c6", "b6", "a6",
     "h7", "g7", "f7", "e7", "d7", "c7", "b7", "a7", "h8", "g8", "f8", "e8", "d8", "c8", "b8", "a8"};
+
+const std::unordered_map<std::string_view, int> square_coords_to_index{
+    {"h1", 0},  {"g1", 1},  {"f1", 2},  {"e1", 3},  {"d1", 4},  {"c1", 5},  {"b1", 6},  {"a1", 7},
+    {"h2", 8},  {"g2", 9},  {"f2", 10}, {"e2", 11}, {"d2", 12}, {"c2", 13}, {"b2", 14}, {"a2", 15},
+    {"h3", 16}, {"g3", 17}, {"f3", 18}, {"e3", 19}, {"d3", 20}, {"c3", 21}, {"b3", 22}, {"a3", 23},
+    {"h4", 24}, {"g4", 25}, {"f4", 26}, {"e4", 27}, {"d4", 28}, {"c4", 29}, {"b4", 30}, {"a4", 31},
+    {"h5", 32}, {"g5", 33}, {"f5", 34}, {"e5", 35}, {"d5", 36}, {"c5", 37}, {"b5", 38}, {"a5", 39},
+    {"h6", 40}, {"g6", 41}, {"f6", 42}, {"e6", 43}, {"d6", 44}, {"c6", 45}, {"b6", 46}, {"a6", 47},
+    {"h7", 48}, {"g7", 49}, {"f7", 50}, {"e7", 51}, {"d7", 52}, {"c7", 53}, {"b7", 54}, {"a7", 55},
+    {"h8", 56}, {"g8", 57}, {"f8", 58}, {"e8", 59}, {"d8", 60}, {"c8", 61}, {"b8", 62}, {"a8", 63},
+};
+
+const std::unordered_map<char, piece_t> piece_symbol_to_piece_t = {
+    {'P', piece_t::white_pawn}, {'N', piece_t::white_knight}, {'B', piece_t::white_bishop},
+    {'R', piece_t::white_rook}, {'Q', piece_t::white_queen},  {'K', piece_t::white_king},
+    {'p', piece_t::black_pawn}, {'n', piece_t::black_knight}, {'b', piece_t::black_bishop},
+    {'r', piece_t::black_rook}, {'q', piece_t::black_queen},  {'k', piece_t::black_king},
+};
+
+const std::unordered_map<piece_t, char> piece_t_to_piece_symbol = {
+    {piece_t::white_pawn, 'P'}, {piece_t::white_knight, 'N'}, {piece_t::white_bishop, 'B'},
+    {piece_t::white_rook, 'R'}, {piece_t::white_queen, 'Q'},  {piece_t::white_king, 'K'},
+    {piece_t::black_pawn, 'p'}, {piece_t::black_knight, 'n'}, {piece_t::black_bishop, 'b'},
+    {piece_t::black_rook, 'r'}, {piece_t::black_queen, 'q'},  {piece_t::black_king, 'k'},
+};
 
 const std::array<std::string_view, 15> full_piece_names = {
     "White Pawn",  "White Knight", "White Bishop", "White Rook",   "White Queen",
