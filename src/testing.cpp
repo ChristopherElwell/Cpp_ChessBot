@@ -69,12 +69,11 @@ auto perft_search(BitBoard &board, int iter) -> uint64_t
 
 void run_perft_test(int max_draft)
 {
-    int perft_test_counter = 1;
+    println("Running perft test at {} draft...", max_draft);
     int tests_passed = 0;
     for (auto [fen, correct_perfts] : perft_tests)
     {
         auto board = BitBoard(fen);
-        print("\nRunning Perft Test {}\n{}\n", perft_test_counter++, fen);
         int drafts_passed = 0;
         for (int idx = 0; idx < max_draft; idx++)
         {
@@ -89,7 +88,6 @@ void run_perft_test(int max_draft)
             }
             if (perft == correct_perfts.at(idx))
             {
-                print("\tPassed, Draft: {}\n", idx + 1);
                 drafts_passed++;
             }
             else
@@ -103,12 +101,14 @@ void run_perft_test(int max_draft)
             tests_passed++;
         }
     }
-    print("Pass Rate: {}/{}\n", tests_passed, perft_tests.size());
+    println("Perft test complete\nPass rate: {:.0f}%\n",
+            static_cast<float>(tests_passed) / static_cast<float>(perft_tests.size()) * 100);
 }
 
 void test_puzzles(size_t count)
 {
-    const vector<vector<string>> pzls = read_csv(priv::win_at_chess_file);
+    println("Running puzzle test. {} puzzles...", count);
+    const vector<vector<string>> pzls = read_csv(priv::win_at_chess_path);
     size_t idx = 0;
     int passed = 0;
     Engine engine;
@@ -118,23 +118,21 @@ void test_puzzles(size_t count)
     {
         const string &fen = pzl[0];
         const string &answer = pzl[1];
-        const string &pzl_id = pzl[2];
         if (idx++ >= count)
         {
             break;
         }
-        LOG("\nRUNNING TESTS: {}\n{}\n", pzl_id, fen);
 
-        const auto clock_start = chrono::high_resolution_clock::now();
+        const auto clock_start = chrono::steady_clock::now();
 
         engine.load(fen);
-        engine.run(6);
+        future<void> future = engine.run(6);
+        future.get();
         const auto clock_end = chrono::high_resolution_clock::now();
         sum_time += chrono::duration_cast<chrono::milliseconds>(clock_end - clock_start);
 
         if (engine.get_algebraic() == answer)
         {
-            LOG("PASSED [{}]", answer);
             passed++;
         }
         else
@@ -142,67 +140,85 @@ void test_puzzles(size_t count)
             LOG("\nFAILED | Bot Move: [{}] Correct Move: [{}]\n", engine.get_algebraic(), answer);
         }
     }
-    LOG("\n\nPASS RATE: {}/{}", passed, count);
-    LOG("Time to complete: {}", sum_time);
+    println("Puzzle test complete\nPass rate: {:.0f}%\nTime to complete: {}\n",
+            static_cast<float>(passed) / static_cast<float>(count) * 100, sum_time);
 }
 
 void test_move_conversion()
 {
-    Engine engine;
-    BitBoard board = BitBoard("r1b1kb2/pPppp1pp/n1p5/1q3pPr/8/2N5/1PP1PP2/R1BQK2R w KQq f6 0 1");
-    vector<string> test_moves = {"e1g1",  "h1h5",  "a1a5", "a1a6", "b7a8q",
-                                 "b7b8n", "b7c8b", "e1d2", "c1f4"};
-    vector<string> post_move_fen = {"r1b1kb2/pPppp1pp/n1p5/1q3pPr/8/2N5/1PP1PP2/R1BQ1RK1 b q -",
-                                    "r1b1kb2/pPppp1pp/n1p5/1q3pPR/8/2N5/1PP1PP2/R1BQK3 b Qq -",
-                                    "r1b1kb2/pPppp1pp/n1p5/Rq3pPr/8/2N5/1PP1PP2/2BQK2R b Kq -",
-                                    "r1b1kb2/pPppp1pp/R1p5/1q3pPr/8/2N5/1PP1PP2/2BQK2R b Kq -",
-                                    "Q1b1kb2/p1ppp1pp/n1p5/1q3pPr/8/2N5/1PP1PP2/R1BQK2R b KQ -",
-                                    "rNb1kb2/p1ppp1pp/n1p5/1q3pPr/8/2N5/1PP1PP2/R1BQK2R b KQq -",
-                                    "r1B1kb2/p1ppp1pp/n1p5/1q3pPr/8/2N5/1PP1PP2/R1BQK2R b KQq -",
-                                    "r1b1kb2/pPppp1pp/n1p5/1q3pPr/8/2N5/1PPKPP2/R1BQ3R b q -",
-                                    "r1b1kb2/pPppp1pp/n1p5/1q3pPr/5B2/2N5/1PP1PP2/R2QK2R b KQq -"};
-    int success = 0;
-    for (const auto &fen : post_move_fen)
+    println("Runnning move conversion test...");
+    const auto rows = read_csv(priv::test_games_path);
+    if (rows.empty())
     {
-        const auto fen_converted = BitBoard(fen).to_fen();
-        if (fen_converted != fen)
-        {
-            println("Failed to encode and unencode: \n\t[{}]\n\t[{}]", fen, fen_converted);
-        }
-        else
-        {
-            success++;
-        }
+        println("CSV move conversion test: no rows read from [{}]", priv::test_games_path.string());
+        return;
     }
-    println("Fen conversion test complete. Success: {}/{}", success, post_move_fen.size());
-    success = 0;
-    for (const auto &[uci, fen] : ranges::views::zip(test_moves, post_move_fen))
+
+    int total = 0;
+    int success = 0;
+    int uci_failures = 0;
+    int fen_failures = 0;
+
+    for (const auto &row : rows)
     {
-        BitBoard this_board = board;
-        bool b_success = true;
-        const Move mov = Engine::uci_to_move(uci, this_board);
-        const string uci_converted = Engine::move_to_uci(mov, this_board);
-        if (uci != uci_converted)
+        if (row.size() < 5)
         {
-            print("Failed to encode and unencode: [{}] -> [{}]", uci, uci_converted);
-            b_success = false;
+            LOG("Skipping malformed row (expected 5 columns, got {})", row.size());
             continue;
         }
+
+        const string &game_id = row[0];
+        const string &ply = row[1];
+        const string &fen_before = row[2];
+        const string &uci = row[3];
+        const string &fen_after = row[4];
+
+        total++;
+        bool b_success = true;
+
+        BitBoard this_board = BitBoard::start_position();
+        Move mov;
+        string uci_converted;
+        try
+        {
+            this_board = BitBoard(fen_before);
+            mov = Engine::uci_to_move(uci, this_board);
+            uci_converted = Engine::move_to_uci(mov, this_board);
+        }
+        catch (std::exception &e)
+        {
+            println("Exception. Fen: [{}]\n uci: [{}]\n mov type: [{}]\n", fen_before, uci,
+                    static_cast<int>(mov.type));
+            continue;
+        }
+        if (uci != uci_converted)
+        {
+            println("[game {} ply {}] Failed to encode and unencode uci: [{}] -> [{}]", game_id,
+                    ply, uci, uci_converted);
+            b_success = false;
+            uci_failures++;
+        }
+
         this_board.apply_move(mov);
         const string fen_converted = this_board.to_fen();
-        this_board.apply_move(mov);
-        if (fen != fen_converted)
+        if (fen_converted != fen_after)
         {
             println(
-                "Failed to encode and unencode with move [{}]: \n\tCorrect: [{}]\n\t  Wrong: [{}]",
-                uci, fen, fen_converted);
+                "[game {} ply {}] Failed to apply move [{}] from [{}]:\n\tCorrect: [{}]\n\t  "
+                "Wrong: [{}]",
+                game_id, ply, uci, fen_before, fen_after, fen_converted);
             b_success = false;
+            fen_failures++;
         }
+
         success += b_success ? 1 : 0;
     }
-    println("Move conversion test complete. Success: {}/{}", success, post_move_fen.size());
-}
 
+    println(
+        "Move conversion test complete\nPass rate: {:.0f}%\nuci failures: {}, fen failures: "
+        "{}\n",
+        static_cast<float>(success) / static_cast<float>(total) * 100, uci_failures, fen_failures);
+}
 namespace
 {
 auto read_csv(const filesystem::path &filename) -> vector<vector<string>>

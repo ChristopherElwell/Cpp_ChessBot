@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <future>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -58,7 +59,7 @@ constexpr auto mate_eval<side_t::black>(const MoveGen& move_gen, int ply) noexce
 }
 }  // namespace
 
-void Engine::run(int depth)
+auto Engine::run(int depth) -> future<void>
 {
     if (m_search_thread.joinable())
     {
@@ -69,10 +70,13 @@ void Engine::run(int depth)
         m_timer_thread.join();
     }
 
+    promise<void> promise;
+    future<void> future = promise.get_future();
+
     m_b_stop = false;
-    m_stop_time = chrono::high_resolution_clock::now() + max_search_time;
+    m_stop_time = chrono::steady_clock::now() + max_search_time;
     m_search_thread = thread(
-        [this, depth]() -> void
+        [this, depth, promise = std::move(promise)]() mutable -> void
         {
             if (m_board.side_to_move() == side_t::white)
             {
@@ -82,10 +86,12 @@ void Engine::run(int depth)
             {
                 search_async<side_t::black>(depth);
             }
+            promise.set_value();
         });
+    return future;
 }
 
-void Engine::run(chrono::milliseconds duration)
+auto Engine::run(chrono::milliseconds duration) -> future<void>
 {
     if (m_search_thread.joinable())
     {
@@ -96,10 +102,13 @@ void Engine::run(chrono::milliseconds duration)
         m_timer_thread.join();
     }
 
+    promise<void> promise;
+    future<void> future = promise.get_future();
+
     m_b_stop = false;
-    m_stop_time = chrono::high_resolution_clock::now() + duration;
+    m_stop_time = chrono::steady_clock::now() + duration;
     m_search_thread = thread(
-        [this]() -> void
+        [this, promise = std::move(promise)]() mutable -> void
         {
             if (m_board.side_to_move() == side_t::white)
             {
@@ -109,6 +118,7 @@ void Engine::run(chrono::milliseconds duration)
             {
                 search_async<side_t::black>();
             }
+            promise.set_value();
         });
     m_timer_thread = thread(
         [this]() -> void
@@ -118,6 +128,7 @@ void Engine::run(chrono::milliseconds duration)
                                  [this]() -> bool { return m_b_stop.load(memory_order_relaxed); });
             m_b_stop.store(true, memory_order_relaxed);
         });
+    return future;
 }
 
 template <side_t Side>
@@ -143,28 +154,41 @@ void Engine::search_async()
     m_uci = move_to_uci(pv_completed.best_move());
     m_algebraic = move_to_algebraic(state.pv.best_move());
     convert_pv(pv_completed);
-    println("bestmove {}", m_uci);
+    if (m_b_uci_mode)
+    {
+        println("bestmove {}", m_uci);
+    }
 }
 
 template <side_t Side>
 void Engine::search_async(int depth)
 {
     const lock_guard<std::mutex> lock(m_search_lock);
-    PVTable pv_completed = {};
     auto state = search_state{.board = m_board, .b_stop = &m_b_stop, .pv = {}};
 
     // No use of this eval
     search<Side>(search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0},
                  state);
 
-    if (!state.b_stop->load(memory_order_relaxed))
+    // stop being true on a depth search means it was interrupted, discard result
+    if (state.b_stop->load(memory_order_relaxed))
     {
-        swap(pv_completed, state.pv);
+        DEBUG_LOG("Discarding result of depth search");
+        if (m_b_uci_mode)
+        {
+            print("bestmove ");
+        }
     }
-    m_uci = move_to_uci(pv_completed.best_move());
-    m_algebraic = move_to_algebraic(pv_completed.best_move());
-    convert_pv(pv_completed);
-    println("bestmove {}", m_uci);
+    else
+    {
+        m_uci = move_to_uci(state.pv.best_move());
+        m_algebraic = move_to_algebraic(state.pv.best_move());
+        convert_pv(state.pv);
+        if (m_b_uci_mode)
+        {
+            println("bestmove {}", m_uci);
+        }
+    }
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)

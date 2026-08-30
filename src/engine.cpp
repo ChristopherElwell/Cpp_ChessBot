@@ -275,7 +275,7 @@ auto Engine::uci_to_move(const string& uci, BitBoard& board) -> Move
         if ((start_sq | end_sq) == castling::white_queenside_king_move)
         {
             assert(end_pc == piece_t::piece_count);
-            return Move::castle_queenside(piece_t::white_queen, castling::white_queenside_king_move,
+            return Move::castle_queenside(piece_t::white_king, castling::white_queenside_king_move,
                                           piece_t::white_rook, castling::white_queenside_rook_move,
                                           info_xor, board[piece_t::info]);
         }
@@ -295,7 +295,7 @@ auto Engine::uci_to_move(const string& uci, BitBoard& board) -> Move
         if ((start_sq | end_sq) == castling::black_queenside_king_move)
         {
             assert(end_pc == piece_t::piece_count);
-            return Move::castle_queenside(piece_t::black_queen, castling::black_queenside_king_move,
+            return Move::castle_queenside(piece_t::black_king, castling::black_queenside_king_move,
                                           piece_t::black_rook, castling::black_queenside_rook_move,
                                           info_xor, board[piece_t::info]);
         }
@@ -373,7 +373,7 @@ auto Engine::uci_to_move(const string& uci, BitBoard& board) -> Move
         const bool is_diagonal = (uci[0] != uci[2]);  // file changed
         if (is_diagonal && end_pc == piece_t::piece_count)
         {
-            return Move::capture(start_pc, start_sq,
+            return Move::capture(start_pc, start_sq | end_sq,
                                  is_white ? piece_t::black_pawn : piece_t::white_pawn,
                                  is_white ? end_sq >> 8 : end_sq << 8, 0, board[piece_t::info]);
         }
@@ -382,8 +382,8 @@ auto Engine::uci_to_move(const string& uci, BitBoard& board) -> Move
         const int rank_diff = std::abs(uci[1] - uci[3]);
         if (rank_diff == 2)
         {
-            return Move::quiet(start_pc, start_sq | end_sq, is_white ? start_sq << 8 : end_sq >> 8,
-                               board[piece_t::info]);
+            return Move::quiet(start_pc, start_sq | end_sq,
+                               is_white ? start_sq << 8 : start_sq >> 8, board[piece_t::info]);
         }
     }
 
@@ -496,7 +496,7 @@ auto Engine::parse_run(const string& message) -> bool
 void Engine::uci_loop()
 {
     string message;
-
+    m_b_uci_mode = true;
     for (;;)
     {
         getline(cin, message);
@@ -531,7 +531,7 @@ void Engine::uci_loop()
             if (!b_success)
             {
                 LOG("Error while starting search. Ceasing search");
-                m_stop_time = chrono::high_resolution_clock::now();
+                m_stop_time = chrono::steady_clock::now();
             }
         }
         if (message.starts_with("stop"))
@@ -561,5 +561,18 @@ void Engine::uci_loop()
             }
             break;
         }
+    }
+}
+
+Engine::~Engine()
+{
+    m_b_stop.store(true, memory_order_relaxed);
+    if (m_search_thread.joinable())
+    {
+        m_search_thread.join();
+    }
+    if (m_timer_thread.joinable())
+    {
+        m_timer_thread.join();
     }
 }
