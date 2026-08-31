@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "bitboard.h"
+#include "board_history.h"
 #include "engine.h"
 #include "move.h"
 #include "move_gen.h"
@@ -328,6 +329,80 @@ void test_zobrist_hash()
         "hash failures: {}\n",
         static_cast<float>(success) / static_cast<float>(total) * 100, construction_failures,
         hash_failures);
+}
+
+void test_board_history()
+{
+    println("Running board history test...");
+
+    BoardHistory history;
+
+    const ZobristHash hash_a{0x123456789ABCDEF0ULL};
+    const ZobristHash hash_b{0xFEDCBA9876543210ULL};
+    const ZobristHash hash_c{0x1111222233334444ULL};
+
+    int total = 0;
+    int success = 0;
+
+    auto check = [&](bool condition, const string &description) -> void
+    {
+        total++;
+
+        if (condition)
+        {
+            success++;
+            return;
+        }
+
+        println("  FAILED: {}", description);
+    };
+
+    check(!history.is_threefold(hash_a), "Empty history should not contain a threefold repetition");
+
+    history.push_back(hash_a);
+
+    check(!history.is_threefold(hash_a),
+          "One prior occurrence should not be a threefold repetition");
+
+    history.push_back(hash_b);
+    history.push_back(hash_a);
+
+    check(history.is_threefold(hash_a), "Two prior occurrences should be a threefold repetition");
+    check(!history.is_threefold(ZobristHash{}), "A different hash should not produce a repetition");
+
+    history.pop_back();  // Remove third A
+
+    check(!history.is_threefold(hash_a),
+          "Popping the latest occurrence should remove the repetition");
+
+    history.push_back(hash_a);
+
+    check(history.is_threefold(hash_a),
+          "Adding the second prior occurrence again should restore repetition");
+
+    history.push_irreversible(hash_b);
+
+    check(!history.is_threefold(hash_a),
+          "Positions before an irreversible move should be discarded");
+
+    check(!history.is_threefold(hash_b),
+          "A single position after an irreversible move is not a repetition");
+
+    history.push_back(hash_c);
+    history.push_back(hash_b);
+    history.push_back(hash_c);
+    history.push_back(hash_b);
+
+    check(history.is_threefold(hash_b),
+          "Three occurrences after an irreversible move should be detected");
+
+    check(!history.is_threefold(hash_a),
+          "Old positions should remain excluded after irreversible move");
+
+    println(
+        "Board history test complete\n"
+        "Pass rate: {:.0f}% ({}/{})\n",
+        static_cast<float>(success) / static_cast<float>(total) * 100.0F, success, total);
 }
 
 namespace

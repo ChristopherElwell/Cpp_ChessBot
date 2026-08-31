@@ -130,3 +130,5 @@ ZobristHash::ZobristHash(const BitBoard& board)
     }
     push_info(board[piece_t::info]);
 }
+
+ZobristHash::ZobristHash(uint64_t hash) : m_hash(hash) {}

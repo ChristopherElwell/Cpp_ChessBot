@@ -20,6 +20,7 @@ target_compile_features(
 # Include directories (if you have headers in include/)
 target_sources(ElwellBot PRIVATE 
     src/bitboard.cpp
+    src/board_history.cpp
     src/engine.cpp
     src/eval.cpp
     src/main.cpp    

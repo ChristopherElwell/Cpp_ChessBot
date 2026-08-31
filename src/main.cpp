@@ -49,6 +49,9 @@ auto main(int argc, char* argv[]) -> int
             case mode_t::conversion:
                 test_move_conversion();
                 break;
+            case mode_t::history:
+                test_board_history();
+                break;
             case mode_t::zobrist:
                 test_zobrist_hash();
                 break;
@@ -101,6 +104,10 @@ auto parse_arguments(int argc, span<char* const> argv) -> vector<task_t>
         else if (arg == "--conversion")
         {
             args.push_back(task_t{.mode = mode_t::conversion});
+        }
+        else if (arg == "--history")
+        {
+            args.push_back(task_t{.mode = mode_t::history});
         }
         else if (arg == "--zobrist")
         {

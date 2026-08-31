@@ -13,6 +13,7 @@ class ZobristHash
 {
 public:
     ZobristHash(const BitBoard& board);
+    ZobristHash(uint64_t hash);
     ZobristHash() = default;
     void push(const Move& move);
     [[nodiscard]] auto get() const -> uint64_t;
