@@ -49,6 +49,9 @@ auto main(int argc, char* argv[]) -> int
             case mode_t::conversion:
                 test_move_conversion();
                 break;
+            case mode_t::zobrist:
+                test_zobrist_hash();
+                break;
         }
     }
     return 0;
@@ -98,6 +101,10 @@ auto parse_arguments(int argc, span<char* const> argv) -> vector<task_t>
         else if (arg == "--conversion")
         {
             args.push_back(task_t{.mode = mode_t::conversion});
+        }
+        else if (arg == "--zobrist")
+        {
+            args.push_back(task_t{.mode = mode_t::zobrist});
         }
         else if (arg == "--uci")
         {

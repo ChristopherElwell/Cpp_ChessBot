@@ -219,6 +219,117 @@ void test_move_conversion()
         "{}\n",
         static_cast<float>(success) / static_cast<float>(total) * 100, uci_failures, fen_failures);
 }
+
+void test_zobrist_hash()
+{
+    println("Running Zobrist hashing test...");
+
+    const auto rows = read_csv(priv::test_games_path);
+    if (rows.empty())
+    {
+        println("Zobrist hashing test: no rows read from [{}]", priv::test_games_path.string());
+        return;
+    }
+
+    int total = 0;
+    int success = 0;
+    int construction_failures = 0;
+    int hash_failures = 0;
+
+    for (const auto &row : rows)
+    {
+        if (row.size() < 5)
+        {
+            LOG("Skipping malformed row (expected 5 columns, got {})", row.size());
+            continue;
+        }
+
+        const string &game_id = row[0];
+        const string &ply = row[1];
+        const string &fen_before = row[2];
+        const string &uci = row[3];
+        const string &fen_after = row[4];
+
+        total++;
+        bool b_success = true;
+
+        try
+        {
+            // Construct board and hash from the position before the move.
+            auto board = BitBoard(fen_before);
+            ZobristHash hash(board);
+
+            const uint64_t hash_before = hash.get();
+
+            // Construct a fresh hash from the same board.
+            ZobristHash reference_before(board);
+
+            if (hash_before != reference_before.get())
+            {
+                println(
+                    "[game {} ply {}] Hash construction is inconsistent:\n"
+                    "\tFEN:      [{}]\n"
+                    "\tHash:     {:016X}\n"
+                    "\tReference:{:016X}",
+                    game_id, ply, fen_before, hash_before, reference_before.get());
+
+                b_success = false;
+                construction_failures++;
+            }
+
+            // Convert UCI to a move and apply it.
+            const Move mov = Engine::uci_to_move(uci, board);
+
+            board.apply_move(mov);
+
+            // Incrementally update the hash.
+            hash.push(mov);
+
+            const uint64_t incremental_hash = hash.get();
+
+            // Construct the same hash from scratch from the resulting board.
+            const ZobristHash reference_after(board);
+            const uint64_t reference_hash = reference_after.get();
+
+            if (incremental_hash != reference_hash)
+            {
+                println(
+                    "[game {} ply {}] Zobrist hash mismatch after move [{}]:\n"
+                    "\tBefore FEN: [{}]\n"
+                    "\tAfter FEN:  [{}]\n"
+                    "\tIncremental: {:016X}\n"
+                    "\tReference:   {:016X}",
+                    game_id, ply, uci, fen_before, fen_after, incremental_hash, reference_hash);
+
+                b_success = false;
+                hash_failures++;
+            }
+        }
+        catch (const std::exception &e)
+        {
+            println(
+                "[game {} ply {}] Exception testing Zobrist hash:\n"
+                "\tFEN: [{}]\n"
+                "\tUCI: [{}]\n"
+                "\t{}",
+                game_id, ply, fen_before, uci, e.what());
+
+            b_success = false;
+            construction_failures++;
+        }
+
+        success += b_success ? 1 : 0;
+    }
+
+    println(
+        "Zobrist hashing test complete\n"
+        "Pass rate: {:.0f}%\n"
+        "construction failures: {}\n"
+        "hash failures: {}\n",
+        static_cast<float>(success) / static_cast<float>(total) * 100, construction_failures,
+        hash_failures);
+}
+
 namespace
 {
 auto read_csv(const filesystem::path &filename) -> vector<vector<string>>

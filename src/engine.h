@@ -25,6 +25,7 @@ enum class mode_t : uint8_t
     puzzles,
     perft,
     conversion,
+    zobrist,
 };
 
 struct task_t
