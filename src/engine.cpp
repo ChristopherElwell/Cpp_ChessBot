@@ -497,6 +497,8 @@ void Engine::uci_loop()
 {
     string message;
     m_b_uci_mode = true;
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+
     for (;;)
     {
         getline(cin, message);

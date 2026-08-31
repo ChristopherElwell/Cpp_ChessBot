@@ -152,12 +152,13 @@ void Engine::search_async()
     }
     LOG("Completed depth: {}", depth_completed);
     m_uci = move_to_uci(pv_completed.best_move());
-    m_algebraic = move_to_algebraic(state.pv.best_move());
-    convert_pv(pv_completed);
     if (m_b_uci_mode)
     {
+        LOG("bestmove {}", m_uci);
         println("bestmove {}", m_uci);
     }
+    m_algebraic = move_to_algebraic(state.pv.best_move());
+    convert_pv(pv_completed);
 }
 
 template <side_t Side>
@@ -176,7 +177,7 @@ void Engine::search_async(int depth)
         DEBUG_LOG("Discarding result of depth search");
         if (m_b_uci_mode)
         {
-            print("bestmove ");
+            println("bestmove ");
         }
     }
     else
