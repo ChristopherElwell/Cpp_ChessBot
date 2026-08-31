@@ -123,6 +123,7 @@ BitBoard::BitBoard(const string& fen)
         m_board[static_cast<int>(piece_t::black_king)];
     m_board[static_cast<int>(piece_t::all_pcs)] = m_board[static_cast<int>(piece_t::white_pcs)] |
                                                   m_board[static_cast<int>(piece_t::black_pcs)];
+    m_hash = ZobristHash(*this);
 }
 
 auto BitBoard::to_fen() const -> string
@@ -246,6 +247,7 @@ void BitBoard::apply_move(const Move& move)
         m_board[static_cast<int>(piece_t::black_king)];
     m_board[static_cast<int>(piece_t::all_pcs)] = m_board[static_cast<int>(piece_t::white_pcs)] |
                                                   m_board[static_cast<int>(piece_t::black_pcs)];
+    m_hash.push(move);
 }
 
 auto BitBoard::draw() const -> string

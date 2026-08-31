@@ -1,41 +1,18 @@
-#pragma once
+#ifndef BITBOARD_H
+#define BITBOARD_H
 #include <array>
 #include <cstdint>
 #include <string>
 
-struct Move;
+#include "bitboard_constants.h"
+#include "zobrist.h"
 
-enum class side_t : uint8_t
-{
-    white,
-    black
-};
+class Move;
 
 constexpr auto operator~(side_t side) noexcept -> side_t
 {
     return side == side_t::white ? side_t::black : side_t::white;
 }
-
-enum class piece_t : uint8_t
-{
-    white_pawn,
-    white_knight,
-    white_bishop,
-    white_rook,
-    white_queen,
-    white_king,
-    black_pawn,
-    black_knight,
-    black_bishop,
-    black_rook,
-    black_queen,
-    black_king,
-    white_pcs,
-    black_pcs,
-    all_pcs,
-    info,
-    piece_count
-};
 
 inline auto operator-(const piece_t pc_a, const piece_t pc_b) -> int
 {
@@ -89,6 +66,10 @@ public:
     {
         return piece_range{piece_t::white_pawn, piece_t::black_king};
     }
+    static auto all_and_info() -> piece_range
+    {
+        return piece_range{piece_t::white_pawn, piece_t::black_king};
+    }
 
 private:
     piece_t m_start;
@@ -99,6 +80,7 @@ class BitBoard
 {
 private:
     std::array<uint64_t, static_cast<int>(piece_t::piece_count)> m_board{};
+    ZobristHash m_hash;
     static constexpr uint64_t turn_bit = 0b10;
 
     static auto sq_from_name(char file, char rank) -> uint64_t;
@@ -119,3 +101,4 @@ public:
                                                                           : side_t::black;
     }
 };
+#endif
