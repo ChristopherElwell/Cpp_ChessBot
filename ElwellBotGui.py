@@ -59,7 +59,7 @@ def sanitize(name):
 
 def auto_pgn_filename(name1, name2, num_games):
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"{stamp}_{sanitize(name1)}_vs_{sanitize(name2)}_{num_games}games.pgn"
+    return f"game_results/{stamp}_{sanitize(name1)}_vs_{sanitize(name2)}_{num_games}games.pgn"
 
 
 # ---------------------------------------------------------------------------
@@ -319,9 +319,7 @@ def run_match(
             while not board.is_game_over(claim_draw=True):
                 engine1_turn = (board.turn == chess.WHITE) == engine1_is_white
                 engine, movetime, mover_name = (
-                    (engine1, time1, name1)
-                    if engine1_turn
-                    else (engine2, time2, name2)
+                    (engine1, time1, name1) if engine1_turn else (engine2, time2, name2)
                 )
 
                 try:
