@@ -28,6 +28,7 @@ target_sources(ElwellBot PRIVATE
     src/search.cpp
     src/pv.cpp
     src/testing.cpp
+    src/zobrist.cpp
 )
 
 target_compile_definitions(ElwellBot PRIVATE 
