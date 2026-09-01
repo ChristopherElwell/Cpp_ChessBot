@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "bitboard.h"
+#include "board_history.h"
 #include "move.h"
 #include "pv.h"
 
@@ -54,12 +55,14 @@ struct search_state
     BitBoard board;
     std::atomic_bool *b_stop = nullptr;
     PVTable pv;
+    BoardHistory history;
 };
 
 class Engine
 {
 private:
     BitBoard m_board = BitBoard::start_position();
+    BoardHistory m_history = {};
     std::string m_uci;
     std::string m_algebraic;
     std::vector<std::string> m_pv_uci;

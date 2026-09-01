@@ -282,3 +282,5 @@ auto BitBoard::sq_from_name(char file, char rank) -> uint64_t
 {
     return masks::ranks[rank - '1'] & masks::files['h' - file];
 }
+
+auto BitBoard::hash() -> ZobristHash { return m_hash; }

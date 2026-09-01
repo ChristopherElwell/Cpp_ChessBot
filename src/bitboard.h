@@ -100,5 +100,6 @@ public:
         return (m_board[static_cast<int>(piece_t::info)] & turn_bit) != 0 ? side_t::white
                                                                           : side_t::black;
     }
+    auto hash() -> ZobristHash;
 };
 #endif

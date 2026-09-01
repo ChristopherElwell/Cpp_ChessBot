@@ -77,6 +77,7 @@ struct Move
                                 uint64_t info, uint64_t board_info) -> Move;
     static auto castle_queenside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2,
                                  uint64_t info, uint64_t board_info) -> Move;
+    [[nodiscard]] auto is_irreversible() const -> bool;
 
     [[nodiscard]] auto to_string() const -> std::string;
 };

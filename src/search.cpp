@@ -137,24 +137,27 @@ void Engine::search_async()
     const lock_guard<std::mutex> lock(m_search_lock);
     int depth_completed = 0;
     PVTable pv_completed = {};
-    auto state = search_state{.board = m_board, .b_stop = &m_b_stop, .pv = {}};
+    auto state =
+        search_state{.board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history};
+    int eval_completed = 0;
     for (int depth = 1; !state.b_stop->load(memory_order_relaxed); depth++)
     {
         // No use of this eval
-        search<Side>(search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0},
-                     state);
+        const int eval = search<Side>(
+            search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0}, state);
 
         if (!state.b_stop->load(memory_order_relaxed))
         {
             depth_completed = depth;
+            eval_completed = eval;
             swap(pv_completed, state.pv);
         }
     }
-    LOG("Completed depth: {}", depth_completed);
     m_uci = move_to_uci(pv_completed.best_move());
     if (m_b_uci_mode)
     {
-        LOG("bestmove {}", m_uci);
+        LOG("{}, {}, {}, {}", depth_completed, m_uci, static_cast<float>(eval_completed) / 100.0F,
+            Side == side_t::white ? "White" : "Black");
         println("bestmove {}", m_uci);
     }
     m_algebraic = move_to_algebraic(state.pv.best_move());
@@ -165,7 +168,8 @@ template <side_t Side>
 void Engine::search_async(int depth)
 {
     const lock_guard<std::mutex> lock(m_search_lock);
-    auto state = search_state{.board = m_board, .b_stop = &m_b_stop, .pv = {}};
+    auto state =
+        search_state{.board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history};
 
     // No use of this eval
     search<Side>(search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0},
@@ -197,7 +201,7 @@ template <side_t Side>
 auto Engine::search(search_args args, search_state& state) -> int
 {
     auto [depth, alpha, beta, ply] = args;
-    auto& [board, b_stop, pv] = state;
+    auto& [board, b_stop, pv, history] = state;
     // instantly stop searching and cleanup
     if (b_stop->load(memory_order_relaxed))
     {
@@ -228,9 +232,28 @@ auto Engine::search(search_args args, search_state& state) -> int
             board.apply_move(move);
             continue;
         }
+        int eval = 0;
+        if (history.is_threefold(board.hash()))
+        {
+            // draw
+            eval = 0;
+        }
+        else
+        {
+            if (move.is_irreversible())
+            {
+                history.push_irreversible(board.hash());
+            }
+            else
+            {
+                history.push_back(board.hash());
+            }
+            eval = search<~Side>(
+                search_args{.depth = depth - 1, .alpha = alpha, .beta = beta, .ply = ply + 1},
+                state);
+            history.pop_back();
+        }
 
-        const int eval = search<~Side>(
-            search_args{.depth = depth - 1, .alpha = alpha, .beta = beta, .ply = ply + 1}, state);
         board.apply_move(move);
 
         if constexpr (Side == side_t::white)

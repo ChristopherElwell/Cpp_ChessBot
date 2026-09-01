@@ -4,11 +4,17 @@
 #include <array>
 
 #include "zobrist.h"
+struct history_entry
+{
+    ZobristHash hash = {};
+    bool b_irriversible = false;
+};
+
 class BoardHistory
 {
 private:
     static constexpr size_t max_length = 50;
-    std::array<ZobristHash, max_length> m_history = {};
+    std::array<history_entry, max_length> m_history = {};
     int m_end = 0;
 
 public:

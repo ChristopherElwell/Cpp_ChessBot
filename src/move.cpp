@@ -130,4 +130,9 @@ auto Move::to_string() const -> string
             break;
     }
 }
+
+auto Move::is_irreversible() const -> bool
+{
+    return type != move_type_t::quiet || pc1 == piece_t::white_pawn || pc1 == piece_t::black_pawn;
+}
 // NOLINTEND(bugprone-easily-swappable-parameters)
