@@ -211,6 +211,7 @@ auto Engine::split_into_tokens(const string& str) -> vector<string>
 
 auto Engine::parse_and_set_position(const string& message) -> bool
 {
+    m_history.clear();
     const auto tokens = split_into_tokens(message);
     if (tokens.at(1) == "startpos")
     {
@@ -233,6 +234,7 @@ auto Engine::parse_and_set_position(const string& message) -> bool
     {
         const auto mov = uci_to_move(uci);
         m_board.apply_move(mov);
+        m_history.push_back(m_board.hash());
     }
 
     return true;
