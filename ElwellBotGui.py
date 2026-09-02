@@ -14,6 +14,11 @@ from PIL import Image, ImageTk
 
 colours = ["#DCE6C9", "#BCC6A9", "#FCF6E9"]
 
+DEFAULT_ENGINE1_PATH = "C:/repos/Cpp_ChessBot/out/build/Release/ElwellBot.exe"
+DEFAULT_STOCKFISH_PATH = (
+    "C:/repos/Cpp_ChessBot/testing/stockfish/stockfish-windows-x86-64-avx2.exe"
+)
+
 
 # ---------------------------------------------------------------------------
 # Engine helpers
@@ -60,6 +65,55 @@ def sanitize(name):
 def auto_pgn_filename(name1, name2, num_games):
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"game_results/{stamp}_{sanitize(name1)}_vs_{sanitize(name2)}_{num_games}games.pgn"
+
+
+# ---------------------------------------------------------------------------
+# GUI: opponent picker shown when you launch with no CLI args at all
+# ---------------------------------------------------------------------------
+
+
+class OpponentPicker(tk.Tk):
+    """First screen when you run the script bare. Lets you choose whether
+    to play the bot yourself or have it play a Stockfish match, instead of
+    remembering --stockfish / --bot2 flags."""
+
+    def __init__(self):
+        super().__init__()
+        self.title("ElwellBot")
+        self.choice = None  # "human" or "stockfish"
+
+        self.resizable(False, False)
+        pad = {"padx": 20, "pady": 8}
+
+        tk.Label(self, text="What would you like to do?", font=("", 12)).pack(
+            padx=20, pady=(20, 10)
+        )
+        tk.Button(
+            self,
+            text="Play against the bot",
+            width=28,
+            command=self._pick_human,
+        ).pack(**pad)
+        tk.Button(
+            self,
+            text="Watch bot vs Stockfish",
+            width=28,
+            command=self._pick_stockfish,
+        ).pack(**pad)
+
+        self.protocol("WM_DELETE_WINDOW", self._cancel)
+
+    def _pick_human(self):
+        self.choice = "human"
+        self.destroy()
+
+    def _pick_stockfish(self):
+        self.choice = "stockfish"
+        self.destroy()
+
+    def _cancel(self):
+        self.choice = None
+        self.destroy()
 
 
 # ---------------------------------------------------------------------------
@@ -387,16 +441,21 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "engine1",
+        nargs="?",
+        default=DEFAULT_ENGINE1_PATH,
         help="Path to a UCI engine executable (your bot). Also the opponent "
-        "used in GUI mode.",
+        "used in GUI mode. (default: %(default)s)",
     )
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--stockfish",
-        "-s",
+        "-sf",
+        nargs="?",
+        const=DEFAULT_STOCKFISH_PATH,
         default=None,
-        help="Path to stockfish.exe -> run engine1 vs Stockfish",
+        help="Run engine1 vs Stockfish. Pass with no value to use the "
+        "default Stockfish path (%(const)s), or give your own.",
     )
     group.add_argument(
         "--bot2",
@@ -466,5 +525,25 @@ if __name__ == "__main__":
             pgn_file=args.pgn_file,
         )
     else:
-        w = ChessWindow(args.engine1)
-        w.mainloop()
+        # No --stockfish/--bot2 given: let the user pick from inside the UI
+        # instead of having to remember a flag.
+        picker = OpponentPicker()
+        picker.mainloop()
+
+        if picker.choice == "stockfish":
+            time2 = args.time2 if args.time2 is not None else 0.1
+            run_match(
+                args.engine1,
+                DEFAULT_STOCKFISH_PATH,
+                num_games=args.games,
+                time1=args.time1,
+                time2=time2,
+                skill_level=args.skill_level,
+                elo=args.elo,
+                engine1_starts=not args.bot2_starts,
+                pgn_file=args.pgn_file,
+            )
+        elif picker.choice == "human":
+            w = ChessWindow(args.engine1)
+            w.mainloop()
+        # else: picker was closed with no choice made -> just exit
