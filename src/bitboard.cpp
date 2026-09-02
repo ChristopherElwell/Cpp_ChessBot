@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "bitboard_constants.h"
 #include "bitscan.h"
 #include "data.h"
 #include "move.h"
@@ -82,16 +83,18 @@ BitBoard::BitBoard(const string& fen)
         switch (fen[idx])
         {
             case 'K':
-                m_board[static_cast<int>(piece_t::info)] |= castling::white_kingside_right;
+                m_board[static_cast<int>(piece_t::info)] |= castling<side_t::white>::kingside_right;
                 break;
             case 'Q':
-                m_board[static_cast<int>(piece_t::info)] |= castling::white_queenside_right;
+                m_board[static_cast<int>(piece_t::info)] |=
+                    castling<side_t::white>::queenside_right;
                 break;
             case 'k':
-                m_board[static_cast<int>(piece_t::info)] |= castling::black_kingside_right;
+                m_board[static_cast<int>(piece_t::info)] |= castling<side_t::black>::kingside_right;
                 break;
             case 'q':
-                m_board[static_cast<int>(piece_t::info)] |= castling::black_queenside_right;
+                m_board[static_cast<int>(piece_t::info)] |=
+                    castling<side_t::black>::queenside_right;
                 break;
             default:
                 break;
@@ -180,19 +183,19 @@ auto BitBoard::to_fen() const -> string
     // --- castling rights ---
     fen += ' ';
     string rights;
-    if (info & castling::white_kingside_right)
+    if (info & castling<side_t::white>::kingside_right)
     {
         rights += 'K';
     }
-    if (info & castling::white_queenside_right)
+    if (info & castling<side_t::white>::queenside_right)
     {
         rights += 'Q';
     }
-    if (info & castling::black_kingside_right)
+    if (info & castling<side_t::black>::kingside_right)
     {
         rights += 'k';
     }
-    if (info & castling::black_queenside_right)
+    if (info & castling<side_t::black>::queenside_right)
     {
         rights += 'q';
     }
@@ -200,9 +203,10 @@ auto BitBoard::to_fen() const -> string
 
     // --- en passant square ---
     fen += ' ';
-    const uint64_t known_flags = turn_bit | castling::white_kingside_right |
-                                 castling::white_queenside_right | castling::black_kingside_right |
-                                 castling::black_queenside_right;
+    const uint64_t known_flags = turn_bit | castling<side_t::white>::kingside_right |
+                                 castling<side_t::white>::queenside_right |
+                                 castling<side_t::black>::kingside_right |
+                                 castling<side_t::black>::queenside_right;
     const uint64_t ep_bits = info & ~known_flags;
     if (ep_bits == 0)
     {
@@ -221,14 +225,202 @@ auto BitBoard::to_fen() const -> string
     return fen;
 }
 
-void BitBoard::apply_move(const Move& move)
+template <side_t Side>
+auto BitBoard::apply_move(const Move& move) -> inv_move
 {
-    assert(move.type != move_type_t::moves_termination);
-    m_board[static_cast<int>(move.pc1)] ^= move.mov1;
-    m_board[static_cast<int>(move.pc2)] ^= move.mov2;
-    m_board[static_cast<int>(move.pc3)] ^= move.mov3;
+    const uint64_t from_mask = 1ULL << move.from();
+    const uint64_t to_mask = 1ULL << move.to();
+    const uint64_t mov_mask = from_mask | to_mask;
+    const piece_t moving_pc = piece_at(from_mask);
+    const piece_t captured_pc = piece_at(to_mask);
+    const int from = move.from();
+    const int to = move.to();
+    const move_type_t type = move.type();
 
-    m_board[static_cast<int>(piece_t::info)] ^= (move.info | turn_bit);
+    const auto inverse = inv_move{.moving_pc = moving_pc,
+                                  .captured_pc = captured_pc,
+                                  .info = m_board.at(static_cast<size_t>(piece_t::info))};
+
+    m_hash.push_info(turn_bit | (m_board[static_cast<size_t>(piece_t::info)] & ~masks::rank_1));
+    m_board[static_cast<size_t>(piece_t::info)] &= masks::rank_1;
+    m_board[static_cast<size_t>(piece_t::info)] ^= turn_bit;
+    if (moving_pc == piece::rook<Side>)
+    {
+        if (mov_mask & castling<Side>::kingside_rook_from &&
+            m_board.at(static_cast<size_t>(piece_t::info)) & castling<Side>::kingside_right)
+        {
+            m_board.at(static_cast<size_t>(piece_t::info)) ^= castling<Side>::kingside_right;
+            m_hash.push_info(castling<Side>::kingside_right);
+        }
+        if (mov_mask & castling<Side>::queenside_rook_from &&
+            m_board.at(static_cast<size_t>(piece_t::info)) & castling<Side>::queenside_right)
+        {
+            m_board.at(static_cast<size_t>(piece_t::info)) ^= castling<Side>::queenside_right;
+            m_hash.push_info(castling<Side>::queenside_right);
+        }
+    }
+    if (moving_pc == piece::king<Side>)
+    {
+        m_board.at(static_cast<size_t>(piece_t::info)) &= ~castling<Side>::kingside_right;
+        m_board.at(static_cast<size_t>(piece_t::info)) &= ~castling<Side>::queenside_right;
+        m_hash.push_info(castling<Side>::kingside_right);
+        m_hash.push_info(castling<Side>::queenside_right);
+    }
+    if (captured_pc == piece::rook<~Side>)
+    {
+        if (to_mask & castling<~Side>::kingside_rook_from &&
+            m_board.at(static_cast<size_t>(piece_t::info)) & castling<~Side>::kingside_right)
+        {
+            m_board.at(static_cast<size_t>(piece_t::info)) ^= castling<~Side>::kingside_right;
+            m_hash.push_info(castling<~Side>::kingside_right);
+        }
+        if (to_mask & castling<~Side>::queenside_rook_from &&
+            m_board.at(static_cast<size_t>(piece_t::info)) & castling<~Side>::queenside_right)
+        {
+            m_board.at(static_cast<size_t>(piece_t::info)) ^= castling<~Side>::queenside_right;
+            m_hash.push_info(castling<~Side>::queenside_right);
+        }
+    }
+
+    switch (move.type())
+    {
+        case move_type_t::quiet:
+            m_board.at(static_cast<size_t>(moving_pc)) ^= mov_mask;
+            m_hash.push_piece(moving_pc, mov_mask);
+            break;
+        case move_type_t::capture:
+            m_board.at(static_cast<size_t>(moving_pc)) ^= mov_mask;
+            m_board.at(static_cast<size_t>(captured_pc)) ^= to_mask;
+            m_hash.push_piece(moving_pc, mov_mask);
+            m_hash.push_piece(captured_pc, to_mask);
+            break;
+        case move_type_t::promote_queen:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(piece::queen<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(piece::queen<Side>, to_mask);
+            break;
+        }
+        case move_type_t::promote_rook:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(piece::rook<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(piece::rook<Side>, to_mask);
+            break;
+        }
+        case move_type_t::promote_bishop:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(piece::bishop<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(piece::bishop<Side>, to_mask);
+            break;
+        }
+        case move_type_t::promote_knight:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(piece::knight<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(piece::knight<Side>, to_mask);
+            break;
+        }
+        case move_type_t::capture_promote_queen:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(captured_pc)) ^= to_mask;
+            m_board.at(static_cast<size_t>(piece::queen<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(captured_pc, to_mask);
+            m_hash.push_piece(piece::queen<Side>, to_mask);
+            break;
+        }
+        case move_type_t::capture_promote_rook:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(captured_pc)) ^= to_mask;
+            m_board.at(static_cast<size_t>(piece::rook<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(captured_pc, to_mask);
+            m_hash.push_piece(piece::rook<Side>, to_mask);
+            break;
+        }
+        case move_type_t::capture_promote_bishop:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(captured_pc)) ^= to_mask;
+            m_board.at(static_cast<size_t>(piece::bishop<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(captured_pc, to_mask);
+            m_hash.push_piece(piece::bishop<Side>, to_mask);
+            break;
+        }
+        case move_type_t::capture_promote_knight:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(captured_pc)) ^= to_mask;
+            m_board.at(static_cast<size_t>(piece::knight<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(captured_pc, to_mask);
+            m_hash.push_piece(piece::knight<Side>, to_mask);
+            break;
+        }
+        case move_type_t::castle_kingside:
+        {
+            m_board.at(static_cast<size_t>(piece::king<Side>)) ^=
+                castling<Side>::kingside_king_from | castling<Side>::kingside_king_to;
+            m_board.at(static_cast<size_t>(piece::rook<Side>)) ^=
+                castling<Side>::kingside_rook_from | castling<Side>::kingside_rook_to;
+            m_hash.push_piece(piece::king<Side>, castling<Side>::kingside_king_from |
+                                                     castling<Side>::kingside_king_to);
+            m_hash.push_piece(piece::rook<Side>, castling<Side>::kingside_rook_from |
+                                                     castling<Side>::kingside_rook_to);
+            break;
+        }
+        case move_type_t::castle_queenside:
+        {
+            m_board.at(static_cast<size_t>(piece::king<Side>)) ^=
+                castling<Side>::queenside_king_from | castling<Side>::queenside_king_to;
+            m_board.at(static_cast<size_t>(piece::rook<Side>)) ^=
+                castling<Side>::queenside_rook_from | castling<Side>::queenside_rook_to;
+            m_hash.push_piece(piece::king<Side>, castling<Side>::queenside_king_from |
+                                                     castling<Side>::queenside_king_to);
+            m_hash.push_piece(piece::rook<Side>, castling<Side>::queenside_rook_from |
+                                                     castling<Side>::queenside_rook_to);
+            break;
+        }
+        case move_type_t::pawn_double:
+            m_board.at(static_cast<size_t>(moving_pc)) ^= mov_mask;
+            m_hash.push_piece(moving_pc, mov_mask);
+            if constexpr (Side == side_t::white)
+            {
+                m_board.at(static_cast<size_t>(piece_t::info)) ^= to_mask >> 8;
+                m_hash.push_info(to_mask >> 8);
+            }
+            else
+            {
+                m_board.at(static_cast<size_t>(piece_t::info)) ^= to_mask << 8;
+                m_hash.push_info(to_mask << 8);
+            }
+            break;
+        case move_type_t::en_passent:
+            m_board.at(static_cast<size_t>(moving_pc)) ^= mov_mask;
+            m_hash.push_piece(moving_pc, mov_mask);
+            if constexpr (Side == side_t::white)
+            {
+                m_board.at(static_cast<size_t>(piece_t::black_pawn)) ^= to_mask >> 8;
+                m_hash.push_piece(piece_t::black_pawn, to_mask >> 8);
+            }
+            else
+            {
+                m_board.at(static_cast<size_t>(piece_t::white_pawn)) ^= to_mask << 8;
+                m_hash.push_piece(piece_t::white_pawn, to_mask << 8);
+            }
+            break;
+        case move_type_t::moves_termination:
+            break;
+    }
 
     // TODO: xor optimize
     m_board[static_cast<int>(piece_t::white_pcs)] =
@@ -247,7 +439,199 @@ void BitBoard::apply_move(const Move& move)
         m_board[static_cast<int>(piece_t::black_king)];
     m_board[static_cast<int>(piece_t::all_pcs)] = m_board[static_cast<int>(piece_t::white_pcs)] |
                                                   m_board[static_cast<int>(piece_t::black_pcs)];
-    m_hash.push(move);
+    return inverse;
+}
+
+auto BitBoard::apply_move(const Move& move) -> inv_move
+{
+    if (side_to_move() == side_t::white)
+    {
+        return apply_move<side_t::white>(move);
+    }
+    return apply_move<side_t::black>(move);
+}
+template <side_t Side>
+void BitBoard::undo_move(const Move& move, const inv_move& inverse)
+{
+    const uint64_t from_mask = 1ULL << move.from();
+    const uint64_t to_mask = 1ULL << move.to();
+    const uint64_t mov_mask = from_mask | to_mask;
+    const piece_t moving_pc = inverse.moving_pc;
+    const piece_t captured_pc = inverse.captured_pc;
+
+    switch (move.type())
+    {
+        case move_type_t::pawn_double:
+        case move_type_t::quiet:
+            m_board.at(static_cast<size_t>(moving_pc)) ^= mov_mask;
+            m_hash.push_piece(moving_pc, mov_mask);
+            break;
+        case move_type_t::capture:
+            m_board.at(static_cast<size_t>(moving_pc)) ^= mov_mask;
+            m_board.at(static_cast<size_t>(captured_pc)) ^= to_mask;
+            m_hash.push_piece(moving_pc, mov_mask);
+            m_hash.push_piece(captured_pc, to_mask);
+            break;
+        case move_type_t::promote_queen:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(piece::queen<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(piece::queen<Side>, to_mask);
+            break;
+        }
+        case move_type_t::promote_rook:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(piece::rook<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(piece::rook<Side>, to_mask);
+            break;
+        }
+        case move_type_t::promote_bishop:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(piece::bishop<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(piece::bishop<Side>, to_mask);
+            break;
+        }
+        case move_type_t::promote_knight:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(piece::knight<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(piece::knight<Side>, to_mask);
+            break;
+        }
+        case move_type_t::capture_promote_queen:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(captured_pc)) ^= to_mask;
+            m_board.at(static_cast<size_t>(piece::queen<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(captured_pc, to_mask);
+            m_hash.push_piece(piece::queen<Side>, to_mask);
+            break;
+        }
+        case move_type_t::capture_promote_rook:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(captured_pc)) ^= to_mask;
+            m_board.at(static_cast<size_t>(piece::rook<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(captured_pc, to_mask);
+            m_hash.push_piece(piece::rook<Side>, to_mask);
+            break;
+        }
+        case move_type_t::capture_promote_bishop:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(captured_pc)) ^= to_mask;
+            m_board.at(static_cast<size_t>(piece::bishop<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(captured_pc, to_mask);
+            m_hash.push_piece(piece::bishop<Side>, to_mask);
+            break;
+        }
+        case move_type_t::capture_promote_knight:
+        {
+            m_board.at(static_cast<size_t>(moving_pc)) ^= from_mask;
+            m_board.at(static_cast<size_t>(captured_pc)) ^= to_mask;
+            m_board.at(static_cast<size_t>(piece::knight<Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, from_mask);
+            m_hash.push_piece(captured_pc, to_mask);
+            m_hash.push_piece(piece::knight<Side>, to_mask);
+            break;
+        }
+        case move_type_t::castle_kingside:
+        {
+            if constexpr (Side == side_t::white)
+            {
+                m_board.at(static_cast<size_t>(piece::king<Side>)) ^=
+                    castling<side_t::white>::kingside_king_from |
+                    castling<side_t::white>::kingside_king_to;
+                m_board.at(static_cast<size_t>(piece::rook<Side>)) ^=
+                    castling<side_t::white>::kingside_rook_from |
+                    castling<side_t::white>::kingside_rook_to;
+                m_hash.push_piece(piece::king<Side>, castling<side_t::white>::kingside_king_from |
+                                                         castling<side_t::white>::kingside_king_to);
+                m_hash.push_piece(piece::rook<Side>, castling<side_t::white>::kingside_rook_from |
+                                                         castling<side_t::white>::kingside_rook_to);
+            }
+            else
+            {
+                m_board.at(static_cast<size_t>(piece::king<Side>)) ^=
+                    castling<side_t::black>::kingside_king_from |
+                    castling<side_t::black>::kingside_king_to;
+                m_board.at(static_cast<size_t>(piece::rook<Side>)) ^=
+                    castling<side_t::black>::kingside_rook_from |
+                    castling<side_t::black>::kingside_rook_to;
+                m_hash.push_piece(piece::king<Side>, castling<side_t::black>::kingside_king_from |
+                                                         castling<side_t::black>::kingside_king_to);
+                m_hash.push_piece(piece::rook<Side>, castling<side_t::black>::kingside_rook_from |
+                                                         castling<side_t::black>::kingside_rook_to);
+            }
+            break;
+        }
+        case move_type_t::castle_queenside:
+        {
+            if constexpr (Side == side_t::white)
+            {
+                m_board.at(static_cast<size_t>(piece::king<Side>)) ^=
+                    castling<side_t::white>::queenside_king_from |
+                    castling<side_t::white>::queenside_king_to;
+                m_board.at(static_cast<size_t>(piece::rook<Side>)) ^=
+                    castling<side_t::white>::queenside_rook_from |
+                    castling<side_t::white>::queenside_rook_to;
+                m_hash.push_piece(piece::king<Side>,
+                                  castling<side_t::white>::queenside_king_from |
+                                      castling<side_t::white>::queenside_king_to);
+                m_hash.push_piece(piece::rook<Side>,
+                                  castling<side_t::white>::queenside_rook_from |
+                                      castling<side_t::white>::queenside_rook_to);
+            }
+            else
+            {
+                m_board.at(static_cast<size_t>(piece::king<Side>)) ^=
+                    castling<side_t::black>::queenside_king_from |
+                    castling<side_t::black>::queenside_king_to;
+                m_board.at(static_cast<size_t>(piece::rook<Side>)) ^=
+                    castling<side_t::black>::queenside_rook_from |
+                    castling<side_t::black>::queenside_rook_to;
+                m_hash.push_piece(piece::king<Side>,
+                                  castling<side_t::black>::queenside_king_from |
+                                      castling<side_t::black>::queenside_king_to);
+                m_hash.push_piece(piece::rook<Side>,
+                                  castling<side_t::black>::queenside_rook_from |
+                                      castling<side_t::black>::queenside_rook_to);
+            }
+            break;
+        }
+        case move_type_t::en_passent:
+            m_board.at(static_cast<size_t>(moving_pc)) ^= mov_mask;
+            m_board.at(static_cast<size_t>(piece::pawn<~Side>)) ^= to_mask;
+            m_hash.push_piece(moving_pc, mov_mask);
+            m_hash.push_piece(piece::pawn<~Side>, to_mask);
+            break;
+        case move_type_t::moves_termination:
+            break;
+    }
+
+    m_hash.push_info(m_board.at(static_cast<size_t>(piece_t::info)) ^ inverse.info);
+    m_board.at(static_cast<size_t>(piece_t::info)) = inverse.info;
+}
+
+void BitBoard::undo_move(const Move& move, const inv_move& inverse)
+{
+    if (side_to_move() == side_t::white)
+    {
+        undo_move<side_t::white>(move, inverse);
+    }
+    else
+    {
+        undo_move<side_t::black>(move, inverse);
+    }
 }
 
 auto BitBoard::draw() const -> string
@@ -284,3 +668,17 @@ auto BitBoard::sq_from_name(char file, char rank) -> uint64_t
 }
 
 auto BitBoard::hash() -> ZobristHash { return m_hash; }
+
+auto BitBoard::piece_at(int pos) -> piece_t { return piece_at(1ULL << pos); }
+
+auto BitBoard::piece_at(uint64_t mask) -> piece_t
+{
+    for (const piece_t piece : piece_range::all())
+    {
+        if (mask & m_board.at(static_cast<size_t>(piece)))
+        {
+            return piece;
+        }
+    }
+    return piece_t::none;
+}

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <bit>
 #include <cassert>
 #include <cctype>
 #include <chrono>
@@ -22,6 +23,7 @@
 #include <vector>
 
 #include "bitboard.h"
+#include "bitboard_constants.h"
 #include "data.h"
 #include "eval.h"
 #include "move.h"
@@ -49,127 +51,130 @@ void Engine::convert_pv(const PVTable& pv_table)
     BitBoard board = m_board;
     for (const auto& mov : pv_table.get_pv_at_ply(0))
     {
-        m_pv_uci.push_back(move_to_uci(mov, board));
+        m_pv_uci.push_back(move_to_uci(mov));
         board.apply_move(mov);
     }
 }
 
-auto Engine::move_to_uci(const Move& mov, const BitBoard& board) -> string
+auto Engine::move_to_uci(const Move& move) -> string
 {
-    string out;
-    uint64_t starting_sq = 0;
-    uint64_t ending_sq = 0;
+    const string_view from_sq = square_coords.at(move.from());
+    const string_view to_sq = square_coords.at(move.to());
 
-    switch (mov.type)
+    switch (move.type())
     {
         case move_type_t::quiet:
         case move_type_t::capture:
         case move_type_t::castle_kingside:
         case move_type_t::castle_queenside:
-            starting_sq = mov.mov1 & board[mov.pc1];
-            ending_sq = mov.mov1 & ~board[mov.pc1];
-            out += square_coords.at(countr_zero(starting_sq));
-            out += square_coords.at(countr_zero(ending_sq));
-            return out;
-        case move_type_t::promote:
-            starting_sq = mov.mov1 & board[mov.pc1];
-            ending_sq = mov.mov2;
-            out += square_coords.at(countr_zero(starting_sq));
-            out += square_coords.at(countr_zero(ending_sq));
-            out += lower_case_piece_chars.at(static_cast<size_t>(mov.pc2) % 6);
-            return out;
-        case move_type_t::capture_promote:
-            starting_sq = mov.mov1 & board[mov.pc1];
-            ending_sq = mov.mov3;
-            out += square_coords.at(countr_zero(starting_sq));
-            out += square_coords.at(countr_zero(ending_sq));
-            out += lower_case_piece_chars.at(static_cast<size_t>(mov.pc3) % 6);
-            return out;
+        case move_type_t::pawn_double:
+        case move_type_t::en_passent:
+            return format("{}{}", from_sq, to_sq);
+        case move_type_t::promote_queen:
+            return format("{}{}q", from_sq, to_sq);
+        case move_type_t::promote_rook:
+            return format("{}{}r", from_sq, to_sq);
+        case move_type_t::promote_bishop:
+            return format("{}{}b", from_sq, to_sq);
+        case move_type_t::promote_knight:
+            return format("{}{}n", from_sq, to_sq);
+        case move_type_t::capture_promote_queen:
+            return format("{}{}q", from_sq, to_sq);
+        case move_type_t::capture_promote_rook:
+            return format("{}{}r", from_sq, to_sq);
+        case move_type_t::capture_promote_bishop:
+            return format("{}{}b", from_sq, to_sq);
+        case move_type_t::capture_promote_knight:
+            return format("{}{}n", from_sq, to_sq);
         case move_type_t::moves_termination:
-            return "MOVES TERMINATED";
-        default:
-            return "UNKNOWN";
+            return "XXXX";
     }
-    return out;
 }
 
 auto Engine::move_to_algebraic(const Move& move, BitBoard& board) -> string
 {
-    const uint64_t to_pos = move.mov1 & ~board[move.pc1];
-    const uint64_t from_pos = move.mov1 & ~to_pos;
+    const string_view from_sq = square_coords.at(move.from());
+    const string_view to_sq = square_coords.at(move.to());
+    const piece_t moving_pc = board.piece_at(move.from());
+    const char moving_symbol = piece_t_to_piece_symbol.at(moving_pc);
+
     string out;
-    if (move.pc1 == piece_t::white_pawn || move.pc1 == piece_t::black_pawn)
+    switch (move.type())
     {
-        switch (move.type)
-        {
-            case move_type_t::quiet:
-                out = square_coords.at(countr_zero(to_pos));
-                break;
-            case move_type_t::capture:
-                out = format("{}x{}", square_coords.at(countr_zero(from_pos))[0],
-                             square_coords.at(countr_zero(to_pos)));
-                break;
-            case move_type_t::promote:
-                out = format("{}{}", square_coords.at(countr_zero(move.mov2)),
-                             piece_chars.at(static_cast<int>(move.pc2) % 6));
-                break;
-            case move_type_t::capture_promote:
-                out = format("{}x{}={}", square_coords.at(countr_zero(from_pos))[0],
-                             square_coords.at(countr_zero(move.mov2)),
-                             piece_chars.at(static_cast<int>(move.pc3) % 6));
-                break;
-            case move_type_t::castle_kingside:
-            case move_type_t::castle_queenside:
-            default:
-                return "Unknown";
-                break;
-        }
-    }
-    else
-    {
-        switch (move.type)
-        {
-            case move_type_t::quiet:
+        case move_type_t::quiet:
+            if (moving_pc == piece_t::white_pawn || moving_pc == piece_t::black_pawn)
             {
-                const char piece_char = piece_chars.at(static_cast<int>(move.pc1) % 6);
-                out = format("{}{}", piece_char, square_coords.at(countr_zero(to_pos)));
-                break;
+                out = string(to_sq);
             }
-            case move_type_t::capture:
+            else
             {
-                const char piece_char = piece_chars.at(static_cast<int>(move.pc1) % 6);
-                out = format("{}x{}", piece_char, square_coords.at(countr_zero(to_pos)));
-                break;
+                out = format("{}{}", moving_symbol, to_sq);
             }
-            case move_type_t::castle_kingside:
-                out = "O-O";
-                break;
-            case move_type_t::castle_queenside:
-                out = "O-O-O";
-                break;
-            case move_type_t::capture_promote:
-            default:
-                return "Unknown";
-        }
+            break;
+        case move_type_t::capture:
+            if (moving_pc == piece_t::white_pawn || moving_pc == piece_t::black_pawn)
+            {
+                out = format("{}x{}", from_sq.at(0), to_sq);
+            }
+            else
+            {
+                out = format("{}x{}", moving_symbol, to_sq);
+            }
+            break;
+        case move_type_t::promote_queen:
+            out = format("{}=Q", to_sq);
+            break;
+        case move_type_t::promote_rook:
+            out = format("{}=R", to_sq);
+            break;
+        case move_type_t::promote_bishop:
+            out = format("{}=B", to_sq);
+            break;
+        case move_type_t::promote_knight:
+            out = format("{}=N", to_sq);
+            break;
+        case move_type_t::capture_promote_queen:
+            out = format("{}x{}=Q", from_sq.at(0), to_sq);
+            break;
+        case move_type_t::capture_promote_rook:
+            out = format("{}x{}=R", from_sq.at(0), to_sq);
+        case move_type_t::capture_promote_bishop:
+            out = format("{}x{}=B", from_sq.at(0), to_sq);
+        case move_type_t::capture_promote_knight:
+            out = format("{}x{}=N", from_sq.at(0), to_sq);
+        case move_type_t::castle_kingside:
+            out = "O-O";
+            break;
+        case move_type_t::castle_queenside:
+            out = "O-O-O";
+            break;
+        case move_type_t::pawn_double:
+            out = to_sq;
+            break;
+        case move_type_t::en_passent:
+            out = format("{}x{}", from_sq.at(0), to_sq);
+            break;
+        case move_type_t::moves_termination:
+            return "XXXX";
+            break;
     }
-    auto move_gen = MoveGen(board);
-    board.apply_move(move);
+    const inv_move inverse = board.apply_move(move);
+    MoveGen move_gen(board);
     if (board.side_to_move() == side_t::white)
     {
-        if (move_gen.is_king_in_check<side_t::white>())
+        if (move_gen.is_white_king_in_check())
         {
             out += "+";
         }
     }
     else
     {
-        if (move_gen.is_king_in_check<side_t::black>())
+        if (move_gen.is_black_king_in_check())
         {
             out += "+";
         }
     }
-    board.apply_move(move);
-    return out;
+    board.undo_move(move, inverse);
 }
 
 auto Engine::bitboard_to_string(const uint64_t& board) -> string
@@ -242,159 +247,95 @@ auto Engine::parse_and_set_position(const string& message) -> bool
 
 auto Engine::uci_to_move(const string& uci, BitBoard& board) -> Move
 {
-    const uint64_t start_sq = 1ULL << square_coords_to_index.at(uci.substr(0, 2));
-    const uint64_t end_sq = 1ULL << square_coords_to_index.at(uci.substr(2, 2));
+    const int from_sq = square_coords_to_index.at(uci.substr(0, 2));
+    const int to_sq = square_coords_to_index.at(uci.substr(2, 2));
 
-    piece_t start_pc = piece_t::piece_count;
-    piece_t end_pc = piece_t::piece_count;
-    for (const auto piece : piece_range::all())
-    {
-        if (board[piece] & start_sq)
-        {
-            start_pc = piece;
-        }
-        if (board[piece] & end_sq)
-        {
-            end_pc = piece;
-        }
-    }
+    piece_t from_pc = board.piece_at(from_sq);
+    piece_t to_pc = board.piece_at(to_sq);
 
-    assert(start_pc != piece_t::piece_count && "no piece on source square");
+    assert(from_pc != piece_t::none && "no piece on source square");
 
     // --- Castling ---
-    if (start_pc == piece_t::white_king)
+    if (from_pc == piece_t::white_king)
     {
-        const uint64_t info_xor =
-            (castling::white_kingside_right | castling::white_queenside_right) &
-            board[piece_t::info];
-        if ((start_sq | end_sq) == castling::white_kingside_king_move)
+        if (from_sq == countr_zero(castling<side_t::white>::kingside_king_from) &&
+            to_sq == countr_zero(castling<side_t::white>::kingside_king_to))
         {
-            assert(end_pc == piece_t::piece_count);
-            return Move::castle_kingside(piece_t::white_king, castling::white_kingside_king_move,
-                                         piece_t::white_rook, castling::white_kingside_rook_move,
-                                         info_xor, board[piece_t::info]);
+            return {from_sq, to_sq, move_type_t::castle_kingside};
         }
-        if ((start_sq | end_sq) == castling::white_queenside_king_move)
+        if (from_sq == countr_zero(castling<side_t::white>::queenside_king_from) &&
+            to_sq == countr_zero(castling<side_t::white>::queenside_king_to))
         {
-            assert(end_pc == piece_t::piece_count);
-            return Move::castle_queenside(piece_t::white_king, castling::white_queenside_king_move,
-                                          piece_t::white_rook, castling::white_queenside_rook_move,
-                                          info_xor, board[piece_t::info]);
+            return {from_sq, to_sq, move_type_t::castle_queenside};
         }
     }
-    else if (start_pc == piece_t::black_king)
+    else if (from_pc == piece_t::black_king)
     {
-        const uint64_t info_xor =
-            (castling::black_kingside_right | castling::black_queenside_right) &
-            board[piece_t::info];
-        if ((start_sq | end_sq) == castling::black_kingside_king_move)
+        if (from_sq == countr_zero(castling<side_t::black>::kingside_king_from) &&
+            to_sq == countr_zero(castling<side_t::black>::kingside_king_to))
         {
-            assert(end_pc == piece_t::piece_count);
-            return Move::castle_kingside(piece_t::black_king, castling::black_kingside_king_move,
-                                         piece_t::black_rook, castling::black_kingside_rook_move,
-                                         info_xor, board[piece_t::info]);
+            return {from_sq, to_sq, move_type_t::castle_kingside};
         }
-        if ((start_sq | end_sq) == castling::black_queenside_king_move)
+        if (from_sq == countr_zero(castling<side_t::black>::queenside_king_from) &&
+            to_sq == countr_zero(castling<side_t::black>::queenside_king_to))
         {
-            assert(end_pc == piece_t::piece_count);
-            return Move::castle_queenside(piece_t::black_king, castling::black_queenside_king_move,
-                                          piece_t::black_rook, castling::black_queenside_rook_move,
-                                          info_xor, board[piece_t::info]);
+            return {from_sq, to_sq, move_type_t::castle_queenside};
         }
-    }
-
-    uint64_t info_xor = 0;
-    if (start_pc == piece_t::white_rook)
-    {
-        info_xor |= start_sq & board[piece_t::info] &
-                    (castling::white_kingside_right | castling::white_queenside_right);
-    }
-    if (start_pc == piece_t::black_rook)
-    {
-        info_xor |= start_sq & board[piece_t::info] &
-                    (castling::black_kingside_right | castling::black_queenside_right);
-    }
-    if (end_pc == piece_t::white_rook)
-    {
-        info_xor |= end_sq & board[piece_t::info] &
-                    (castling::white_kingside_right | castling::white_queenside_right);
-    }
-    if (end_pc == piece_t::black_rook)
-    {
-        info_xor |= end_sq & board[piece_t::info] &
-                    (castling::black_kingside_right | castling::black_queenside_right);
-    }
-    if (start_pc == piece_t::white_king)
-    {
-        info_xor |= board[piece_t::info] &
-                    (castling::white_kingside_right | castling::white_queenside_right);
-    }
-    if (start_pc == piece_t::black_king)
-    {
-        info_xor |= board[piece_t::info] &
-                    (castling::black_kingside_right | castling::black_queenside_right);
     }
 
     // --- Pawn moves: promotion, en passant, double push ---
-    if (start_pc == piece_t::white_pawn || start_pc == piece_t::black_pawn)
+    if (from_pc == piece_t::white_pawn || from_pc == piece_t::black_pawn)
     {
-        const bool is_white = start_pc == piece_t::white_pawn;
+        const bool is_white = from_pc == piece_t::white_pawn;
 
         // Promotion: 5th char present, e.g. "e7e8q"
         if (uci.size() == 5)
         {
-            piece_t promo = piece_t::piece_count;
+            bool b_is_capture = to_pc != piece_t::none;
             switch (uci.at(4))
             {
                 case 'q':
-                    promo = is_white ? piece_t::white_queen : piece_t::black_queen;
-                    break;
+                    return {from_sq, to_sq,
+                            b_is_capture ? move_type_t::capture_promote_queen
+                                         : move_type_t::promote_queen};
                 case 'r':
-                    promo = is_white ? piece_t::white_rook : piece_t::black_rook;
-                    break;
+                    return {from_sq, to_sq,
+                            b_is_capture ? move_type_t::capture_promote_rook
+                                         : move_type_t::promote_rook};
                 case 'b':
-                    promo = is_white ? piece_t::white_bishop : piece_t::black_bishop;
-                    break;
+                    return {from_sq, to_sq,
+                            b_is_capture ? move_type_t::capture_promote_bishop
+                                         : move_type_t::promote_bishop};
                 case 'n':
-                    promo = is_white ? piece_t::white_knight : piece_t::black_knight;
-                    break;
+                    return {from_sq, to_sq,
+                            b_is_capture ? move_type_t::capture_promote_knight
+                                         : move_type_t::promote_knight};
                 default:
                     assert(false && "invalid promotion char");
-                    promo = piece_t::piece_count;
+                    return {};
             }
-            if (end_pc == piece_t::piece_count)
-            {
-                return Move::promote(start_pc, start_sq, promo, end_sq, info_xor,
-                                     board[piece_t::info]);
-            }
-            return Move::promote_capture(start_pc, start_sq, end_pc, end_sq, promo, end_sq,
-                                         info_xor, board[piece_t::info]);
         }
 
         // En passant: diagonal pawn move onto an empty square
         const bool is_diagonal = (uci[0] != uci[2]);  // file changed
-        if (is_diagonal && end_pc == piece_t::piece_count)
+        if (is_diagonal && to_pc == piece_t::none)
         {
-            return Move::capture(start_pc, start_sq | end_sq,
-                                 is_white ? piece_t::black_pawn : piece_t::white_pawn,
-                                 is_white ? end_sq >> 8 : end_sq << 8, 0, board[piece_t::info]);
+            return {from_sq, to_sq, move_type_t::en_passent};
         }
 
         // Double push: rank difference of 2
         const int rank_diff = std::abs(uci[1] - uci[3]);
         if (rank_diff == 2)
         {
-            return Move::quiet(start_pc, start_sq | end_sq,
-                               is_white ? start_sq << 8 : start_sq >> 8, board[piece_t::info]);
+            return {from_sq, to_sq, move_type_t::pawn_double};
         }
     }
 
-    if (end_pc != piece_t::piece_count)
+    if (to_pc != piece_t::none)
     {
-        return Move::capture(start_pc, start_sq | end_sq, end_pc, end_sq, info_xor,
-                             board[piece_t::info]);
+        return {from_sq, to_sq, move_type_t::capture};
     }
-    return Move::quiet(start_pc, start_sq | end_sq, info_xor, board[piece_t::info]);
+    return {from_sq, to_sq, move_type_t::quiet};
 }
 
 auto Engine::parse_run(const string& message) -> bool

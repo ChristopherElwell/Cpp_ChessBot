@@ -1,5 +1,7 @@
 #include "move.h"
 
+#include <bit>
+#include <cassert>
 #include <cstdint>
 #include <format>
 #include <string>
@@ -9,130 +11,21 @@
 
 using namespace std;
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
-Move::Move(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, piece_t pc3, uint64_t mov3,
-           uint64_t info, move_type_t type)
-    : pc1(pc1), mov1(mov1), pc2(pc2), mov2(mov2), pc3(pc3), mov3(mov3), info(info), type(type)
+Move::Move(int sq_from, int sq_to, move_type_t type)
+    : m_mask((sq_from << from_shift) | (sq_to << to_shift) | static_cast<uint16_t>(type))
+{}
+
+Move::Move(uint64_t sq_from, uint64_t sq_to, move_type_t type)
+    : m_mask((countr_zero(sq_from) << from_shift) | (countr_zero(sq_to) << to_shift) |
+             static_cast<uint16_t>(type))
 {
+    assert(std::popcount(sq_from) == 1 && std::popcount(sq_to) == 1);
 }
 
-auto Move::quiet(piece_t pc1, uint64_t mov1, uint64_t info, uint64_t board_info) -> Move
-{
-    return Move{pc1,
-                mov1,
-                {},
-                0ULL,
-                {},
-                0ULL,
-                (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                move_type_t::quiet};
-}
+auto Move::type() const -> move_type_t { return static_cast<move_type_t>(m_mask & type_mask); }
 
-auto Move::capture(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
-                   uint64_t board_info) -> Move
-{
-    return Move{pc1,
-                mov1,
-                pc2,
-                mov2,
-                {},
-                0ULL,
-                (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                move_type_t::capture};
-}
+auto Move::from() const -> int { return (m_mask >> from_shift) & from_mask; }
 
-auto Move::promote(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
-                   uint64_t board_info) -> Move
-{
-    return Move{pc1,
-                mov1,
-                pc2,
-                mov2,
-                {},
-                0ULL,
-                (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                move_type_t::promote};
-}
+auto Move::to() const -> int { return (m_mask >> to_shift) & to_mask; }
 
-auto Move::promote_capture(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, piece_t pc3,
-                           uint64_t mov3, uint64_t info, uint64_t board_info) -> Move
-{
-    return Move{pc1,
-                mov1,
-                pc2,
-                mov2,
-                pc3,
-                mov3,
-                (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                move_type_t::capture_promote};
-}
-
-auto Move::castle_kingside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
-                           uint64_t board_info) -> Move
-{
-    return Move{pc1,
-                mov1,
-                pc2,
-                mov2,
-                {},
-                0ULL,
-                (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                move_type_t::castle_kingside};
-}
-
-auto Move::castle_queenside(piece_t pc1, uint64_t mov1, piece_t pc2, uint64_t mov2, uint64_t info,
-                            uint64_t board_info) -> Move
-{
-    return Move{pc1,
-                mov1,
-                pc2,
-                mov2,
-                {},
-                0ULL,
-                (board_info & ~masks::rank_1 & ~masks::rank_8) | info,
-                move_type_t::castle_queenside};
-}
-
-Move::Move()
-    : pc1(piece_t::piece_count),
-      mov1(0),
-      pc2(piece_t::piece_count),
-      mov2(0),
-      pc3(piece_t::piece_count),
-      mov3(0),
-      info(0),
-      type(move_type_t::moves_termination)
-{
-}
-
-auto Move::to_string() const -> string
-{
-    string out = format("Move Type: {} | Primary piece_t: {}", move_type_to_string(type),
-                        full_piece_names.at(static_cast<int>(pc1)));
-
-    switch (type)
-    {
-        case move_type_t::quiet:
-        case move_type_t::castle_kingside:
-        case move_type_t::castle_queenside:
-        case move_type_t::moves_termination:
-            return out;
-        case move_type_t::capture:
-            return format("{} | Captured piece_t: {}", out,
-                          full_piece_names.at(static_cast<int>(pc2)));
-        case move_type_t::promote:
-            return format("{} | Promotee piece_t: {}", out,
-                          full_piece_names.at(static_cast<int>(pc2)));
-        case move_type_t::capture_promote:
-            return format("{} | Captured piece_t: {} | Promoted To piece_t: {}", out,
-                          full_piece_names.at(static_cast<int>(pc2)),
-                          full_piece_names.at(static_cast<int>(pc3)));
-            break;
-    }
-}
-
-auto Move::is_irreversible() const -> bool
-{
-    return type != move_type_t::quiet || pc1 == piece_t::white_pawn || pc1 == piece_t::black_pawn;
-}
 // NOLINTEND(bugprone-easily-swappable-parameters)

@@ -55,15 +55,15 @@ auto perft_search(BitBoard &board, int iter) -> uint64_t
     move_gen.gen<Side>();
     for (const Move &move : move_gen)
     {
-        board.apply_move(move);
+        const inv_move inverse = board.apply_move<Side>(move);
         // check if move leaves white king in check
         if (move_gen.is_king_in_check<Side>())
         {
-            board.apply_move(move);
+            board.undo_move<Side>(move, inverse);
             continue;
         }
         perft += perft_search<~Side>(board, iter - 1);
-        board.apply_move(move);
+        board.undo_move<Side>(move, inverse);
     }
     return perft;
 }
@@ -93,7 +93,7 @@ void run_perft_test(int max_draft)
             }
             else
             {
-                print("\tFailed, Draft: {} | Correct Perft: | This Perft: {}\n", idx + 1,
+                print("\tFailed, Draft: {} | Correct Perft: {} | This Perft: {}\n", idx + 1,
                       correct_perfts.at(idx), perft);
             }
         }
@@ -127,7 +127,7 @@ void test_puzzles(size_t count)
         const auto clock_start = chrono::steady_clock::now();
 
         engine.load(fen);
-        future<void> future = engine.run(6);
+        future<void> future = engine.run(chrono::seconds{1});
         future.get();
         const auto clock_end = chrono::high_resolution_clock::now();
         sum_time += chrono::duration_cast<chrono::milliseconds>(clock_end - clock_start);
@@ -184,12 +184,12 @@ void test_move_conversion()
         {
             this_board = BitBoard(fen_before);
             mov = Engine::uci_to_move(uci, this_board);
-            uci_converted = Engine::move_to_uci(mov, this_board);
+            uci_converted = Engine::move_to_uci(mov);
         }
         catch (std::exception &e)
         {
             println("Exception. Fen: [{}]\n uci: [{}]\n mov type: [{}]\n", fen_before, uci,
-                    static_cast<int>(mov.type));
+                    static_cast<int>(mov.type()));
             continue;
         }
         if (uci != uci_converted)
@@ -201,6 +201,7 @@ void test_move_conversion()
         }
 
         this_board.apply_move(mov);
+
         const string fen_converted = this_board.to_fen();
         if (fen_converted != fen_after)
         {
@@ -283,10 +284,7 @@ void test_zobrist_hash()
 
             board.apply_move(mov);
 
-            // Incrementally update the hash.
-            hash.push(mov);
-
-            const uint64_t incremental_hash = hash.get();
+            const uint64_t incremental_hash = board.hash().get();
 
             // Construct the same hash from scratch from the resulting board.
             const ZobristHash reference_after(board);

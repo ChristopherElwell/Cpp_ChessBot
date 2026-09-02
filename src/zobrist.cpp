@@ -67,32 +67,6 @@ constexpr auto zobrist_info_keys = generate_keys<num_info_keys>(seed_info);
 
 auto ZobristHash::get() const -> uint64_t { return m_hash; }
 
-void ZobristHash::push(const Move& move)
-{
-    switch (move.type)
-    {
-        case move_type_t::quiet:
-            push_piece(move.pc1, move.mov1);
-            break;
-        case move_type_t::capture:
-        case move_type_t::promote:
-        case move_type_t::castle_kingside:
-        case move_type_t::castle_queenside:
-            push_piece(move.pc1, move.mov1);
-            push_piece(move.pc2, move.mov2);
-            break;
-        case move_type_t::capture_promote:
-            push_piece(move.pc1, move.mov1);
-            push_piece(move.pc2, move.mov2);
-            push_piece(move.pc3, move.mov3);
-            break;
-        case move_type_t::moves_termination:
-            break;
-    }
-
-    push_info(move.info | turn_bit);
-}
-
 void ZobristHash::push_piece(piece_t piece, uint64_t mask)
 {
     for (const uint64_t pos : bit_scan(mask))
@@ -105,14 +79,16 @@ void ZobristHash::push_piece(piece_t piece, uint64_t mask)
 void ZobristHash::push_info(uint64_t mask)
 {
     m_hash ^= ((mask & turn_bit) != 0) ? zobrist_info_keys.at(turn_key) : 0;
-    m_hash ^=
-        ((mask & castling::white_kingside_right) != 0) ? zobrist_info_keys.at(castling_key + 0) : 0;
-    m_hash ^= ((mask & castling::white_queenside_right) != 0)
+    m_hash ^= ((mask & castling<side_t::white>::kingside_right) != 0)
+                  ? zobrist_info_keys.at(castling_key + 0)
+                  : 0;
+    m_hash ^= ((mask & castling<side_t::white>::queenside_right) != 0)
                   ? zobrist_info_keys.at(castling_key + 1)
                   : 0;
-    m_hash ^=
-        ((mask & castling::black_kingside_right) != 0) ? zobrist_info_keys.at(castling_key + 2) : 0;
-    m_hash ^= ((mask & castling::black_queenside_right) != 0)
+    m_hash ^= ((mask & castling<side_t::black>::kingside_right) != 0)
+                  ? zobrist_info_keys.at(castling_key + 2)
+                  : 0;
+    m_hash ^= ((mask & castling<side_t::black>::queenside_right) != 0)
                   ? zobrist_info_keys.at(castling_key + 3)
                   : 0;
     for (const uint64_t en_passent : bit_scan(mask & ~(masks::rank_1 | masks::rank_8)))

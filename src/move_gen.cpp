@@ -5,6 +5,8 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
+#include <print>
 
 #include "bitboard.h"
 #include "bitscan.h"
@@ -140,7 +142,7 @@ void MoveGen::get_white_knight_moves()
     {
         const uint64_t moves =
             move_masks::knight_moves[countr_zero(knight)] & ~m_board[piece_t::white_pcs];
-        white_add_to_movs(piece_t::white_knight, knight, moves, 0);
+        white_add_to_movs(knight, moves);
     }
 }
 
@@ -150,7 +152,7 @@ void MoveGen::get_black_knight_moves()
     {
         const uint64_t moves =
             move_masks::knight_moves[countr_zero(knight)] & ~m_board[piece_t::black_pcs];
-        black_add_to_movs(piece_t::black_knight, knight, moves, 0);
+        black_add_to_movs(knight, moves);
     }
 }
 
@@ -159,9 +161,7 @@ void MoveGen::get_white_rook_moves()
     for (const auto rook : bit_scan(m_board[piece_t::white_rook]))
     {
         const uint64_t moves = get_white_rook_attacks(rook);
-        const uint64_t info = m_board[piece_t::info] & rook &
-                              (castling::white_kingside_right | castling::white_queenside_right);
-        white_add_to_movs(piece_t::white_rook, rook, moves, info);
+        white_add_to_movs(rook, moves);
     }
 }
 
@@ -170,9 +170,7 @@ void MoveGen::get_black_rook_moves()
     for (const auto rook : bit_scan(m_board[piece_t::black_rook]))
     {
         const uint64_t moves = get_black_rook_attacks(rook);
-        const uint64_t info = m_board[piece_t::info] & rook &
-                              (castling::black_kingside_right | castling::black_queenside_right);
-        black_add_to_movs(piece_t::black_rook, rook, moves, info);
+        black_add_to_movs(rook, moves);
     }
 }
 
@@ -182,7 +180,7 @@ void MoveGen::get_white_bishop_moves()
     {
         const uint64_t moves = get_white_bishop_attacks(bishop);
 
-        white_add_to_movs(piece_t::white_bishop, bishop, moves, 0);
+        white_add_to_movs(bishop, moves);
     }
 }
 
@@ -192,7 +190,7 @@ void MoveGen::get_black_bishop_moves()
     {
         const uint64_t moves = get_black_bishop_attacks(bishop);
 
-        black_add_to_movs(piece_t::black_bishop, bishop, moves, 0);
+        black_add_to_movs(bishop, moves);
     }
 }
 
@@ -201,32 +199,22 @@ void MoveGen::get_white_pawn_moves()
     for (const auto one_step : bit_scan((m_board[piece_t::white_pawn] << 8) & ~masks::rank_8 &
                                         ~m_board[piece_t::all_pcs]))
     {
-        m_movs[m_idx++] =
-            Move::quiet(piece_t::white_pawn, one_step | one_step >> 8, 0, m_board[piece_t::info]);
+        m_movs[m_idx++] = Move(one_step >> 8, one_step, move_type_t::quiet);
     }
     for (const auto one_step_prom :
          bit_scan((m_board[piece_t::white_pawn] << 8) & masks::rank_8 & ~m_board[piece_t::all_pcs]))
     {
-        m_movs[m_idx++] =
-            Move::promote(piece_t::white_pawn, one_step_prom >> 8, piece_t::white_queen,
-                          one_step_prom, 0, m_board[piece_t::info]);
-        m_movs[m_idx++] =
-            Move::promote(piece_t::white_pawn, one_step_prom >> 8, piece_t::white_knight,
-                          one_step_prom, 0, m_board[piece_t::info]);
-        m_movs[m_idx++] =
-            Move::promote(piece_t::white_pawn, one_step_prom >> 8, piece_t::white_rook,
-                          one_step_prom, 0, m_board[piece_t::info]);
-        m_movs[m_idx++] =
-            Move::promote(piece_t::white_pawn, one_step_prom >> 8, piece_t::white_bishop,
-                          one_step_prom, 0, m_board[piece_t::info]);
+        m_movs[m_idx++] = Move(one_step_prom >> 8, one_step_prom, move_type_t::promote_queen);
+        m_movs[m_idx++] = Move(one_step_prom >> 8, one_step_prom, move_type_t::promote_rook);
+        m_movs[m_idx++] = Move(one_step_prom >> 8, one_step_prom, move_type_t::promote_bishop);
+        m_movs[m_idx++] = Move(one_step_prom >> 8, one_step_prom, move_type_t::promote_knight);
     }
 
     const uint64_t two_steps = ((m_board[piece_t::white_pawn] & masks::rank_2) << 16) &
                                ~((m_board[piece_t::all_pcs]) | (m_board[piece_t::all_pcs] << 8));
     for (const auto two_step : bit_scan(two_steps))
     {
-        m_movs[m_idx++] = Move::quiet(piece_t::white_pawn, two_step | two_step >> 16,
-                                      (two_step >> 8), m_board[piece_t::info]);
+        m_movs[m_idx++] = Move(two_step >> 16, two_step, move_type_t::pawn_double);
     }
 
     white_pawn_taking_moves(7);
@@ -237,9 +225,8 @@ void MoveGen::get_white_pawn_moves()
          ~masks::file_h);
     if (en_passent_take_left != 0)
     {
-        m_movs[m_idx++] = Move::capture(
-            piece_t::white_pawn, en_passent_take_left | (en_passent_take_left >> 9),
-            piece_t::black_pawn, en_passent_take_left >> 8, 0, m_board[piece_t::info]);
+        m_movs[m_idx++] =
+            Move(en_passent_take_left >> 9, en_passent_take_left, move_type_t::en_passent);
     }
 
     const uint64_t en_passent_take_right =
@@ -247,9 +234,8 @@ void MoveGen::get_white_pawn_moves()
          ~masks::file_a);
     if (en_passent_take_right != 0)
     {
-        m_movs[m_idx++] = Move::capture(
-            piece_t::white_pawn, en_passent_take_right | (en_passent_take_right >> 7),
-            piece_t::black_pawn, en_passent_take_right >> 8, 0, m_board[piece_t::info]);
+        m_movs[m_idx++] =
+            Move((en_passent_take_right >> 7), en_passent_take_right, move_type_t::en_passent);
     }
 }
 
@@ -258,33 +244,23 @@ void MoveGen::get_black_pawn_moves()
     for (const auto one_step : bit_scan((m_board[piece_t::black_pawn] >> 8) & ~masks::rank_1 &
                                         ~m_board[piece_t::all_pcs]))
     {
-        m_movs[m_idx++] =
-            Move::quiet(piece_t::black_pawn, one_step | one_step << 8, 0, m_board[piece_t::info]);
+        m_movs[m_idx++] = Move(one_step << 8, one_step, move_type_t::quiet);
     }
 
     for (const auto one_step_prom :
          bit_scan((m_board[piece_t::black_pawn] >> 8) & masks::rank_1 & ~m_board[piece_t::all_pcs]))
     {
-        m_movs[m_idx++] =
-            Move::promote(piece_t::black_pawn, one_step_prom << 8, piece_t::black_queen,
-                          one_step_prom, 0, m_board[piece_t::info]);
-        m_movs[m_idx++] =
-            Move::promote(piece_t::black_pawn, one_step_prom << 8, piece_t::black_knight,
-                          one_step_prom, 0, m_board[piece_t::info]);
-        m_movs[m_idx++] =
-            Move::promote(piece_t::black_pawn, one_step_prom << 8, piece_t::black_rook,
-                          one_step_prom, 0, m_board[piece_t::info]);
-        m_movs[m_idx++] =
-            Move::promote(piece_t::black_pawn, one_step_prom << 8, piece_t::black_bishop,
-                          one_step_prom, 0, m_board[piece_t::info]);
+        m_movs[m_idx++] = Move(one_step_prom << 8, one_step_prom, move_type_t::promote_queen);
+        m_movs[m_idx++] = Move(one_step_prom << 8, one_step_prom, move_type_t::promote_rook);
+        m_movs[m_idx++] = Move(one_step_prom << 8, one_step_prom, move_type_t::promote_bishop);
+        m_movs[m_idx++] = Move(one_step_prom << 8, one_step_prom, move_type_t::promote_knight);
     }
 
     const uint64_t two_steps = ((m_board[piece_t::black_pawn] & masks::rank_7) >> 16) &
                                ~((m_board[piece_t::all_pcs]) | (m_board[piece_t::all_pcs] >> 8));
     for (const auto two_step : bit_scan(two_steps))
     {
-        m_movs[m_idx++] = Move::quiet(piece_t::black_pawn, two_step | two_step << 16,
-                                      (two_step << 8), m_board[piece_t::info]);
+        m_movs[m_idx++] = Move(two_step << 16, two_step, move_type_t::pawn_double);
     }
 
     black_pawn_taking_moves(9);
@@ -294,9 +270,8 @@ void MoveGen::get_black_pawn_moves()
          ~masks::file_h);
     if (en_passent_take_left != 0)
     {
-        m_movs[m_idx++] = Move::capture(
-            piece_t::black_pawn, en_passent_take_left | (en_passent_take_left << 7),
-            piece_t::white_pawn, en_passent_take_left << 8, 0, m_board[piece_t::info]);
+        m_movs[m_idx++] =
+            Move((en_passent_take_left << 7), en_passent_take_left, move_type_t::en_passent);
     }
 
     const uint64_t en_passent_take_right =
@@ -304,46 +279,39 @@ void MoveGen::get_black_pawn_moves()
          ~masks::file_a);
     if (en_passent_take_right != 0)
     {
-        m_movs[m_idx++] = Move::capture(
-            piece_t::black_pawn, en_passent_take_right | (en_passent_take_right << 9),
-            piece_t::white_pawn, en_passent_take_right << 8, 0, m_board[piece_t::info]);
+        m_movs[m_idx++] =
+            Move((en_passent_take_right << 9), en_passent_take_right, move_type_t::en_passent);
     }
 }
 
 void MoveGen::black_pawn_taking_moves(const int offset)
 {
     uint64_t const file_mask = offset == 7 ? masks::file_h : masks::file_a;
-    for (const auto take_right : bit_scan((m_board[piece_t::black_pawn] >> offset) &
-                                          m_board[piece_t::white_pcs] & ~file_mask))
+    for (const auto take : bit_scan((m_board[piece_t::black_pawn] >> offset) &
+                                    m_board[piece_t::white_pcs] & ~file_mask))
     {
         for (auto const piece : piece_range::white_no_king())
         {
-            const uint64_t taken_piece = (take_right & m_board[piece]);
+            const uint64_t taken_piece = (take & m_board[piece]);
             if (taken_piece == 0)
             {
                 continue;
             }
-            const uint64_t promotion_sq = (take_right & masks::rank_1);
+            const uint64_t promotion_sq = (take & masks::rank_1);
             if (promotion_sq != 0)
             {
-                m_movs[m_idx++] = Move::promote_capture(piece_t::black_pawn, take_right << offset,
-                                                        piece, taken_piece, piece_t::black_queen,
-                                                        promotion_sq, 0, m_board[piece_t::info]);
-                m_movs[m_idx++] = Move::promote_capture(piece_t::black_pawn, take_right << offset,
-                                                        piece, taken_piece, piece_t::black_knight,
-                                                        promotion_sq, 0, m_board[piece_t::info]);
-                m_movs[m_idx++] = Move::promote_capture(piece_t::black_pawn, take_right << offset,
-                                                        piece, taken_piece, piece_t::black_bishop,
-                                                        promotion_sq, 0, m_board[piece_t::info]);
-                m_movs[m_idx++] = Move::promote_capture(piece_t::black_pawn, take_right << offset,
-                                                        piece, taken_piece, piece_t::black_rook,
-                                                        promotion_sq, 0, m_board[piece_t::info]);
+                m_movs[m_idx++] =
+                    Move(take << offset, promotion_sq, move_type_t::capture_promote_queen);
+                m_movs[m_idx++] =
+                    Move(take << offset, promotion_sq, move_type_t::capture_promote_rook);
+                m_movs[m_idx++] =
+                    Move(take << offset, promotion_sq, move_type_t::capture_promote_bishop);
+                m_movs[m_idx++] =
+                    Move(take << offset, promotion_sq, move_type_t::capture_promote_knight);
             }
             else
             {
-                m_movs[m_idx++] =
-                    Move::capture(piece_t::black_pawn, take_right | take_right << offset, piece,
-                                  taken_piece, 0, m_board[piece_t::info]);
+                m_movs[m_idx++] = Move(take << offset, take, move_type_t::capture);
             }
             break;
         }
@@ -366,23 +334,18 @@ void MoveGen::white_pawn_taking_moves(const int offset)
             const uint64_t promotion_sq = (take & masks::rank_8);
             if (promotion_sq != 0)
             {
-                m_movs[m_idx++] = Move::promote_capture(piece_t::white_pawn, take >> offset, piece,
-                                                        taken_piece, piece_t::white_queen,
-                                                        promotion_sq, 0, m_board[piece_t::info]);
-                m_movs[m_idx++] = Move::promote_capture(piece_t::white_pawn, take >> offset, piece,
-                                                        taken_piece, piece_t::white_knight,
-                                                        promotion_sq, 0, m_board[piece_t::info]);
-                m_movs[m_idx++] = Move::promote_capture(piece_t::white_pawn, take >> offset, piece,
-                                                        taken_piece, piece_t::white_bishop,
-                                                        promotion_sq, 0, m_board[piece_t::info]);
-                m_movs[m_idx++] = Move::promote_capture(piece_t::white_pawn, take >> offset, piece,
-                                                        taken_piece, piece_t::white_rook,
-                                                        promotion_sq, 0, m_board[piece_t::info]);
+                m_movs[m_idx++] =
+                    Move(take >> offset, promotion_sq, move_type_t::capture_promote_queen);
+                m_movs[m_idx++] =
+                    Move(take >> offset, promotion_sq, move_type_t::capture_promote_rook);
+                m_movs[m_idx++] =
+                    Move(take >> offset, promotion_sq, move_type_t::capture_promote_bishop);
+                m_movs[m_idx++] =
+                    Move(take >> offset, promotion_sq, move_type_t::capture_promote_knight);
             }
             else
             {
-                m_movs[m_idx++] = Move::capture(piece_t::white_pawn, take | take >> offset, piece,
-                                                taken_piece, 0, m_board[piece_t::info]);
+                m_movs[m_idx++] = Move(take >> offset, take, move_type_t::capture);
             }
             break;
         }
@@ -393,27 +356,23 @@ void MoveGen::get_white_king_moves()
 {
     const uint64_t moves = move_masks::king_moves.at(countr_zero(m_board[piece_t::white_king])) &
                            ~m_board[piece_t::white_pcs];
-    const uint64_t info_xor =
-        (castling::white_kingside_right | castling::white_queenside_right) & m_board[piece_t::info];
 
-    white_add_to_movs(piece_t::white_king, m_board[piece_t::white_king], moves, info_xor);
+    white_add_to_movs(m_board[piece_t::white_king], moves);
 
     uint64_t attacks = 0;
-    if (((m_board[piece_t::info] & castling::white_kingside_right) != 0) &&
-        ((castling::white_kingside_space &
+    if (((m_board[piece_t::info] & castling<side_t::white>::kingside_right) != 0) &&
+        ((castling<side_t::white>::kingside_space &
           (m_board[piece_t::white_pcs] | m_board[piece_t::black_pcs])) == 0) &&
         ((m_board[piece_t::white_rook] & masks::file_h & masks::rank_1) != 0))
     {
         attacks = get_black_attackers(m_board);
-        if ((attacks & castling::white_kingside_attacked) == 0)
+        if ((attacks & castling<side_t::white>::kingside_attacked) == 0)
         {
-            m_movs[m_idx++] = Move::castle_kingside(
-                piece_t::white_king, castling::white_kingside_king_move, piece_t::white_rook,
-                castling::white_kingside_rook_move, info_xor, m_board[piece_t::info]);
+            m_movs[m_idx++] = Move();
         }
     }
-    if (((m_board[piece_t::info] & castling::white_queenside_right) != 0) &&
-        ((castling::white_queenside_space &
+    if (((m_board[piece_t::info] & castling<side_t::white>::queenside_right) != 0) &&
+        ((castling<side_t::white>::queenside_space &
           (m_board[piece_t::white_pcs] | m_board[piece_t::black_pcs])) == 0) &&
         ((m_board[piece_t::white_rook] & masks::file_a & masks::rank_1) != 0))
     {
@@ -422,11 +381,9 @@ void MoveGen::get_white_king_moves()
             attacks = get_black_attackers(m_board);
         }
 
-        if ((attacks & castling::white_queenside_attacked) == 0)
+        if ((attacks & castling<side_t::white>::queenside_attacked) == 0)
         {
-            m_movs[m_idx++] = Move::castle_queenside(
-                piece_t::white_king, castling::white_queenside_king_move, piece_t::white_rook,
-                castling::white_queenside_rook_move, info_xor, m_board[piece_t::info]);
+            m_movs[m_idx++] = Move();
         }
     }
 }
@@ -436,28 +393,25 @@ void MoveGen::get_black_king_moves()
     const uint64_t moves = move_masks::king_moves.at(countr_zero(m_board[piece_t::black_king])) &
                            ~m_board[piece_t::black_pcs];
 
-    const uint64_t info_xor =
-        (castling::black_kingside_right | castling::black_queenside_right) & m_board[piece_t::info];
-
-    black_add_to_movs(piece_t::black_king, m_board[piece_t::black_king], moves, info_xor);
+    black_add_to_movs(m_board[piece_t::black_king], moves);
 
     uint64_t attacks = 0;
-    if (((m_board[piece_t::info] & castling::black_kingside_right) != 0) &&
-        ((castling::black_kingside_space &
+    if (((m_board[piece_t::info] & castling<side_t::black>::kingside_right) != 0) &&
+        ((castling<side_t::black>::kingside_space &
           (m_board[piece_t::white_pcs] | m_board[piece_t::black_pcs])) == 0) &&
         ((m_board[piece_t::black_rook] & masks::file_h & masks::rank_8) != 0))
     {
         attacks = get_white_attackers(m_board);
-        if ((attacks & castling::black_kingside_attacked) == 0)
+        if ((attacks & castling<side_t::black>::kingside_attacked) == 0)
         {
-            m_movs[m_idx++] = Move::castle_kingside(
-                piece_t::black_king, castling::black_kingside_king_move, piece_t::black_rook,
-                castling::black_kingside_rook_move, info_xor, m_board[piece_t::info]);
+            m_movs[m_idx++] =
+                Move(castling<side_t::black>::kingside_king_from,
+                     castling<side_t::black>::kingside_king_to, move_type_t::castle_kingside);
         }
     }
 
-    if (((m_board[piece_t::info] & castling::black_queenside_right) != 0) &&
-        ((castling::black_queenside_space &
+    if (((m_board[piece_t::info] & castling<side_t::black>::queenside_right) != 0) &&
+        ((castling<side_t::black>::queenside_space &
           (m_board[piece_t::white_pcs] | m_board[piece_t::black_pcs])) == 0) &&
         ((m_board[piece_t::black_rook] & masks::file_a & masks::rank_8) != 0))
     {
@@ -466,11 +420,11 @@ void MoveGen::get_black_king_moves()
             attacks = get_white_attackers(m_board);
         }
 
-        if ((attacks & castling::black_queenside_attacked) == 0)
+        if ((attacks & castling<side_t::black>::queenside_attacked) == 0)
         {
-            m_movs[m_idx++] = Move::castle_queenside(
-                piece_t::black_king, castling::black_queenside_king_move, piece_t::black_rook,
-                castling::black_queenside_rook_move, info_xor, m_board[piece_t::info]);
+            m_movs[m_idx++] =
+                Move(castling<side_t::black>::queenside_king_from,
+                     castling<side_t::black>::queenside_king_to, move_type_t::castle_queenside);
         }
     }
 }
@@ -481,7 +435,7 @@ void MoveGen::get_white_queen_moves()
     {
         const uint64_t moves = get_white_bishop_attacks(queen) | get_white_rook_attacks(queen);
 
-        white_add_to_movs(piece_t::white_queen, queen, moves, 0);
+        white_add_to_movs(queen, moves);
     }
 }
 
@@ -491,18 +445,15 @@ void MoveGen::get_black_queen_moves()
     {
         const uint64_t moves = get_black_bishop_attacks(queen) | get_black_rook_attacks(queen);
 
-        black_add_to_movs(piece_t::black_queen, queen, moves, 0);
+        black_add_to_movs(queen, moves);
     }
 }
 
-void MoveGen::white_add_to_movs(const piece_t moving_pc, const uint64_t moving_pc_spot,
-                                const uint64_t moves, const uint64_t info)
+void MoveGen::white_add_to_movs(const uint64_t moving_pc_spot, const uint64_t moves)
 {
-    const uint64_t board_info = m_board[piece_t::info];
-
     for (const auto mov : bit_scan(moves & ~m_board[piece_t::black_pcs]))
     {
-        m_movs[m_idx++] = Move::quiet(moving_pc, mov | moving_pc_spot, info, board_info);
+        m_movs[m_idx++] = Move(moving_pc_spot, mov, move_type_t::quiet);
     }
 
     for (const auto taking_spot : bit_scan(moves & m_board[piece_t::black_pcs]))
@@ -512,21 +463,18 @@ void MoveGen::white_add_to_movs(const piece_t moving_pc, const uint64_t moving_p
             const uint64_t taken_spot = (taking_spot & m_board[taken_pc]);
             if (taken_spot != 0)
             {
-                m_movs[m_idx++] = Move::capture(moving_pc, taken_spot | moving_pc_spot, taken_pc,
-                                                taken_spot, info, board_info);
+                m_movs[m_idx++] = Move(moving_pc_spot, taken_spot, move_type_t::capture);
                 break;
             }
         }
     }
 }
 
-void MoveGen::black_add_to_movs(const piece_t moving_pc, const uint64_t moving_pc_spot,
-                                const uint64_t moves, const uint64_t info)
+void MoveGen::black_add_to_movs(const uint64_t moving_pc_spot, const uint64_t moves)
 {
-    const uint64_t board_info = m_board[piece_t::info];
     for (const auto mov : bit_scan(moves & ~m_board[piece_t::white_pcs]))
     {
-        m_movs[m_idx++] = Move::quiet(moving_pc, mov | moving_pc_spot, info, board_info);
+        m_movs[m_idx++] = Move(moving_pc_spot, mov, move_type_t::quiet);
     }
 
     for (const auto taking_spot : bit_scan(moves & m_board[piece_t::white_pcs]))
@@ -536,8 +484,7 @@ void MoveGen::black_add_to_movs(const piece_t moving_pc, const uint64_t moving_p
             const uint64_t taken_spot = (taking_spot & m_board[taken_pc]);
             if (taken_spot != 0)
             {
-                m_movs[m_idx++] = Move::capture(moving_pc, taken_spot | moving_pc_spot, taken_pc,
-                                                taken_spot, info, board_info);
+                m_movs[m_idx++] = Move(moving_pc_spot, taken_spot, move_type_t::capture);
                 break;
             }
         }
@@ -664,45 +611,47 @@ auto MoveGen::is_black_king_in_check() const -> bool
 }
 // NOLINTEND
 
-auto MoveGen::compare_moves(const Move &mov_a, const Move &mov_b) -> bool
-{
-    // First compare move types
-    if (mov_a.type != mov_b.type)
-    {
-        return mov_a.type > mov_b.type;  // Higher type comes first
-    }
-
-    // If move types are the same, compare based on move type
-    switch (mov_a.type)
-    {
-        case move_type_t::quiet:
-            return mov_a.pc1 > mov_b.pc1;  // Higher pc2 comes first
-
-        case move_type_t::capture:
-            // Primary: compare captured pieces (pc2)
-            if (mov_b.pc2 != mov_a.pc2)
-            {
-                return mov_a.pc2 > mov_b.pc2;  // Higher pc2 comes first
-            }
-            // Secondary: compare capturing pieces (pc1)
-            return mov_b.pc1 > mov_a.pc1;  // Lower pc1 comes first
-
-        case move_type_t::promote:
-            return mov_a.pc2 > mov_b.pc2;  // Higher promotion piece comes first
-
-        case move_type_t::capture_promote:
-            // Primary: compare promotion piece (pc3)
-            if (mov_b.pc3 != mov_a.pc3)
-            {
-                return mov_a.pc3 > mov_b.pc3;  // Higher pc3 comes first
-            }
-            // Secondary: compare captured pieces (pc2)
-            return mov_a.pc2 > mov_b.pc2;  // Higher pc2 comes first
-
-        default:
-            return false;  // Equal (maintains stable sort)
-    }
-}
+// auto MoveGen::compare_moves(const Move &mov_a, const Move &mov_b) -> bool
+// {
+//     const piece_t a_moved = m_board.piece_at(mov_a.from());
+//     const piece_t a_captured = m_board.piece_at(mov_a.to());
+//     // First compare move types
+//     if (mov_a.type() != mov_b.type())
+//     {
+//         return mov_a.type() > mov_b.type();  // Higher type comes first
+//     }
+//
+//     // If move types are the same, compare based on move type
+//     switch (mov_a.type())
+//     {
+//         case move_type_t::quiet:
+//             return mov_a.pc1 > mov_b.pc1;  // Higher pc2 comes first
+//
+//         case move_type_t::capture:
+//             // Primary: compare captured pieces (pc2)
+//             if (mov_b.pc2 != mov_a.pc2)
+//             {
+//                 return mov_a.pc2 > mov_b.pc2;  // Higher pc2 comes first
+//             }
+//             // Secondary: compare capturing pieces (pc1)
+//             return mov_b.pc1 > mov_a.pc1;  // Lower pc1 comes first
+//
+//         case move_type_t::promote:
+//             return mov_a.pc2 > mov_b.pc2;  // Higher promotion piece comes first
+//
+//         case move_type_t::capture_promote:
+//             // Primary: compare promotion piece (pc3)
+//             if (mov_b.pc3 != mov_a.pc3)
+//             {
+//                 return mov_a.pc3 > mov_b.pc3;  // Higher pc3 comes first
+//             }
+//             // Secondary: compare captured pieces (pc2)
+//             return mov_a.pc2 > mov_b.pc2;  // Higher pc2 comes first
+//
+//         default:
+//             return false;  // Equal (maintains stable sort)
+//     }
+// }
 
 auto MoveGen::at(size_t idx) -> Move & { return m_movs[idx]; }
 auto MoveGen::at(size_t idx) const -> const Move & { return m_movs[idx]; }
@@ -730,7 +679,7 @@ void MoveGen::gen()
     }
 
     m_end_idx = static_cast<ptrdiff_t>(m_idx);
-    sort(m_movs.begin(), m_movs.begin() + m_end_idx, MoveGen::compare_moves);
+    // sort(m_movs.begin(), m_movs.begin() + m_end_idx, MoveGen::compare_moves);
 }
 
 MoveGen::MoveGen(const BitBoard &board) : m_board(board) {}

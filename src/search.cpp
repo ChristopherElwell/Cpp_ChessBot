@@ -197,12 +197,12 @@ auto Engine::search(search_args args, search_state& state) -> int
     move_gen.gen<Side>();
     for (const auto& move : move_gen)
     {
-        board.apply_move(move);
+        const inv_move inverse = board.apply_move<Side>(move);
 
         // check if move leaves king in check
         if (move_gen.is_king_in_check<Side>())
         {
-            board.apply_move(move);
+            board.undo_move<Side>(move, inverse);
             continue;
         }
         int eval = 0;
@@ -213,21 +213,21 @@ auto Engine::search(search_args args, search_state& state) -> int
         }
         else
         {
-            if (move.is_irreversible())
-            {
-                history.push_irreversible(board.hash());
-            }
-            else
-            {
-                history.push_back(board.hash());
-            }
+            // if (move.is_irreversible())
+            // {
+            //     history.push_irreversible(board.hash());
+            // }
+            // else
+            // {
+            //     history.push_back(board.hash());
+            // }
             eval = -search<~Side>(
                 search_args{.depth = depth - 1, .alpha = -beta, .beta = -alpha, .ply = ply + 1},
                 state);
-            history.pop_back();
+            // history.pop_back();
         }
 
-        board.apply_move(move);
+        board.undo_move<Side>(move, inverse);
 
         if (eval > best_eval)
         {

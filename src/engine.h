@@ -85,7 +85,6 @@ private:
     void search_async(int depth);
 
     void convert_pv(const PVTable &pv_table);
-    auto move_to_uci(const Move &move) -> std::string { return move_to_uci(move, m_board); };
     auto move_to_algebraic(const Move &move) -> std::string
     {
         return move_to_algebraic(move, m_board);
@@ -107,7 +106,7 @@ public:
     void uci_loop();
     static auto bitboard_to_string(const uint64_t &board) -> std::string;
     static auto uci_to_move(const std::string &uci, BitBoard &board) -> Move;
-    static auto move_to_uci(const Move &move, const BitBoard &board) -> std::string;
+    static auto move_to_uci(const Move &move) -> std::string;
     static auto move_to_algebraic(const Move &move, BitBoard &board) -> std::string;
     auto run(std::chrono::milliseconds duration = max_search_time) -> std::future<void>;
     auto run(int depth) -> std::future<void>;

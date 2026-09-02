@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include "bitboard.h"
+#include "move.h"
 
 namespace pc_sq_table
 {
@@ -382,35 +383,43 @@ const std::array<const char, 6> lower_case_piece_chars = {
 static constexpr auto black_sq_char = "⬛";
 static constexpr auto white_sq_char = "⬜";
 
-namespace castling
+template <side_t Side>
+struct castling
 {
-// CASTLING MASKS
-static constexpr uint64_t white_kingside_space = 0b110ULL;
-static constexpr uint64_t white_queenside_space = 0b01110000ULL;
-static constexpr uint64_t black_kingside_space = 0b110ULL << 56;
-static constexpr uint64_t black_queenside_space = 0b01110000ULL << 56;
+    // --- occupancy / attack-check squares (board masks, so black = white << 56) ---
+    static constexpr uint64_t kingside_space =
+        (Side == side_t::white) ? 0b110ULL : (0b110ULL << 56);
+    static constexpr uint64_t queenside_space =
+        (Side == side_t::white) ? 0b01110000ULL : (0b01110000ULL << 56);
+    static constexpr uint64_t kingside_attacked =
+        (Side == side_t::white) ? 0b1110ULL : (0b1110ULL << 56);
+    static constexpr uint64_t queenside_attacked =
+        (Side == side_t::white) ? 0b00111000ULL : (0b00111000ULL << 56);
 
-static constexpr uint64_t white_kingside_attacked = 0b1110ULL;
-static constexpr uint64_t white_queenside_attacked = 0b00111000ULL;
-static constexpr uint64_t black_kingside_attacked = 0b1110ULL << 56;
-static constexpr uint64_t black_queenside_attacked = 0b00111000ULL << 56;
+    // --- castling rights flags (distinct bits in the info word, NOT board squares —
+    //     no <<56 relationship between white/black here) ---
+    static constexpr uint64_t kingside_right = (Side == side_t::white) ? 0b1ULL : 0b100ULL;
+    static constexpr uint64_t queenside_right = (Side == side_t::white) ? 0b10ULL : 0b1000ULL;
 
-static constexpr uint64_t white_kingside_right = 0b00001ULL;
-static constexpr uint64_t white_queenside_right = 0b10000000ULL;
-static constexpr uint64_t black_kingside_right = 0b1ULL << 56;
-static constexpr uint64_t black_queenside_right = 0b10000000ULL << 56;
+    // --- king/rook from/to squares (board masks, black = white << 56) ---
+    static constexpr uint64_t kingside_king_from =
+        (Side == side_t::white) ? 0b1000ULL : (0b1000ULL << 56);
+    static constexpr uint64_t kingside_rook_from =
+        (Side == side_t::white) ? 0b0001ULL : (0b0001ULL << 56);
+    static constexpr uint64_t queenside_king_from =
+        (Side == side_t::white) ? 0b001000ULL : (0b001000ULL << 56);
+    static constexpr uint64_t queenside_rook_from =
+        (Side == side_t::white) ? 0b10000000ULL : (0b10000000ULL << 56);
 
-static constexpr uint64_t white_kingside_king_move = 0b1010ULL;
-static constexpr uint64_t white_kingside_rook_move = 0b0101ULL;
-static constexpr uint64_t white_queenside_king_move = 0b101000ULL;
-static constexpr uint64_t white_queenside_rook_move = 0b10010000ULL;
-
-static constexpr int white_to_black_shift = 56;
-static constexpr uint64_t black_kingside_king_move = white_kingside_king_move << 56;
-static constexpr uint64_t black_kingside_rook_move = white_kingside_rook_move << 56;
-static constexpr uint64_t black_queenside_king_move = white_queenside_king_move << 56;
-static constexpr uint64_t black_queenside_rook_move = white_queenside_rook_move << 56;
-}  // namespace castling
+    static constexpr uint64_t kingside_king_to =
+        (Side == side_t::white) ? 0b0010ULL : (0b0010ULL << 56);
+    static constexpr uint64_t kingside_rook_to =
+        (Side == side_t::white) ? 0b0100ULL : (0b0100ULL << 56);
+    static constexpr uint64_t queenside_king_to =
+        (Side == side_t::white) ? 0b100000ULL : (0b100000ULL << 56);
+    static constexpr uint64_t queenside_rook_to =
+        (Side == side_t::white) ? 0b00010000ULL : (0b00010000ULL << 56);
+};
 
 namespace move_masks
 {

@@ -19,6 +19,13 @@ inline auto operator-(const piece_t pc_a, const piece_t pc_b) -> int
     return static_cast<int>(pc_a) - static_cast<int>(pc_b);
 }
 
+struct inv_move
+{
+    piece_t moving_pc = piece_t::none;
+    piece_t captured_pc = piece_t::none;
+    uint64_t info = 0ULL;
+};
+
 struct piece_range
 {
 public:
@@ -81,8 +88,8 @@ class BitBoard
 private:
     std::array<uint64_t, static_cast<int>(piece_t::piece_count)> m_board{};
     ZobristHash m_hash;
-    static constexpr uint64_t turn_bit = 0b10;
 
+    static constexpr uint64_t turn_bit = 0b10000;
     static auto sq_from_name(char file, char rank) -> uint64_t;
 
 public:
@@ -94,12 +101,23 @@ public:
     BitBoard();
     [[nodiscard]] auto draw() const -> std::string;
     auto operator[](piece_t piece) const -> uint64_t;
-    void apply_move(const Move& move);
+
+    template <side_t Side>
+    auto apply_move(const Move& move) -> inv_move;
+    auto apply_move(const Move& move) -> inv_move;
+
+    template <side_t Side>
+    void undo_move(const Move& move, const inv_move& inverse);
+    void undo_move(const Move& move, const inv_move& inverse);
+
     [[nodiscard]] auto side_to_move() const -> side_t
     {
         return (m_board[static_cast<int>(piece_t::info)] & turn_bit) != 0 ? side_t::white
                                                                           : side_t::black;
     }
     auto hash() -> ZobristHash;
+    auto piece_at(int pos) -> piece_t;
+    auto piece_at(uint64_t mask) -> piece_t;
 };
+
 #endif
