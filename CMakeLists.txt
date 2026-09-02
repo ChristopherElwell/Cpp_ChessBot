@@ -29,6 +29,7 @@ target_sources(ElwellBot PRIVATE
     src/search.cpp
     src/pv.cpp
     src/testing.cpp
+    src/window.cpp
     src/zobrist.cpp
 )
 

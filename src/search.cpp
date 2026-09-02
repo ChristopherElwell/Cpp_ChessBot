@@ -15,48 +15,15 @@
 #include "eval.h"
 #include "move.h"
 #include "move_gen.h"
+#include "window.h"
 
 using namespace std;
-
-/******************************************************************/
-
-template <side_t Side>
-constexpr int init_eval = 0;  // default (optional)
-
-template <>
-constexpr int init_eval<side_t::white> = numeric_limits<int>::min();
-
-template <>
-constexpr int init_eval<side_t::black> = numeric_limits<int>::max();
-
-/******************************************************************/
 
 namespace
 {
 // primary template declaration
 template <side_t Side>
-constexpr auto mate_eval(const MoveGen& move_gen, int ply) noexcept -> int;
-
-// explicit specializations
-template <>
-constexpr auto mate_eval<side_t::white>(const MoveGen& move_gen, int ply) noexcept -> int
-{
-    if (move_gen.is_king_in_check<side_t::white>())
-    {
-        return -checkmate_eval + ply;  // checkmate for black
-    }
-    return 0;  // stalemate
-}
-
-template <>
-constexpr auto mate_eval<side_t::black>(const MoveGen& move_gen, int ply) noexcept -> int
-{
-    if (move_gen.is_king_in_check<side_t::black>())
-    {
-        return checkmate_eval - ply;  // checkmate for white
-    }
-    return 0;  // stalemate
-}
+auto mate_eval(const MoveGen& move_gen, int ply) noexcept -> int;
 }  // namespace
 
 auto Engine::run(int depth) -> future<void>
@@ -140,17 +107,20 @@ void Engine::search_async()
     auto state =
         search_state{.board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history};
     int eval_completed = 0;
-    for (int depth = 1; !state.b_stop->load(memory_order_relaxed); depth++)
+    AspirationWindow window;
+    while (!state.b_stop->load(memory_order_relaxed))
     {
-        // No use of this eval
+        const auto [depth, alpha, beta] = window.next_window();
         const int eval = search<Side>(
-            search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0}, state);
+            search_args{.depth = depth, .alpha = alpha, .beta = beta, .ply = 0}, state);
+        const bool b_eval_in_window = window.report_result(eval);
 
-        if (!state.b_stop->load(memory_order_relaxed))
+        if (!state.b_stop->load(memory_order_relaxed) && b_eval_in_window)
         {
             depth_completed = depth;
             eval_completed = eval;
             swap(pv_completed, state.pv);
+            DEBUG_LOG("Completed depth: {}", depth_completed);
         }
     }
     m_uci = move_to_uci(pv_completed.best_move());
@@ -172,7 +142,10 @@ void Engine::search_async(int depth)
         search_state{.board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history};
 
     // No use of this eval
-    search<Side>(search_args{.depth = depth, .alpha = alpha_init, .beta = beta_init, .ply = 0},
+    search<Side>(search_args{.depth = depth,
+                             .alpha = AspirationWindow::alpha_init,
+                             .beta = AspirationWindow::beta_init,
+                             .ply = 0},
                  state);
 
     // stop being true on a depth search means it was interrupted, discard result
@@ -213,12 +186,12 @@ auto Engine::search(search_args args, search_state& state) -> int
     // if end of iteration, return evaluation of board
     if (depth == 0)
     {
-        return evaluate(board);
+        return evaluate<Side>(board);
     }
 
     Move best_move = {};
     bool b_found_a_move = false;
-    int best_eval = init_eval<Side>;
+    int best_eval = numeric_limits<int>::min();
 
     auto move_gen = MoveGen(board);
     move_gen.gen<Side>();
@@ -248,43 +221,25 @@ auto Engine::search(search_args args, search_state& state) -> int
             {
                 history.push_back(board.hash());
             }
-            eval = search<~Side>(
-                search_args{.depth = depth - 1, .alpha = alpha, .beta = beta, .ply = ply + 1},
+            eval = -search<~Side>(
+                search_args{.depth = depth - 1, .alpha = -beta, .beta = -alpha, .ply = ply + 1},
                 state);
             history.pop_back();
         }
 
         board.apply_move(move);
 
-        if constexpr (Side == side_t::white)
+        if (eval > best_eval)
         {
-            if (eval > best_eval)
-            {
-                best_eval = eval;
-                best_move = move;
-                b_found_a_move = true;
-                pv.update(ply, best_move);
-            }
-            alpha = max(alpha, best_eval);
-            if (alpha >= beta)
-            {
-                break;
-            }
+            best_eval = eval;
+            best_move = move;
+            b_found_a_move = true;
+            pv.update(ply, best_move);
         }
-        else
-        {  // black
-            if (eval < best_eval)
-            {
-                best_eval = eval;
-                best_move = move;
-                b_found_a_move = true;
-                pv.update(ply, best_move);
-            }
-            beta = min(beta, best_eval);
-            if (beta <= alpha)
-            {
-                break;
-            }
+        alpha = max(alpha, best_eval);
+        if (alpha >= beta)
+        {
+            break;
         }
     }
 
@@ -303,3 +258,18 @@ template void Engine::search_async<side_t::white>(int depth);
 template void Engine::search_async<side_t::black>(int depth);
 template auto Engine::search<side_t::white>(search_args args, search_state& state) -> int;
 template auto Engine::search<side_t::black>(search_args args, search_state& state) -> int;
+
+namespace
+{
+
+// primary template declaration
+template <side_t Side>
+auto mate_eval(const MoveGen& move_gen, int ply) noexcept -> int
+{
+    if (move_gen.is_king_in_check<Side>())
+    {
+        return ply - checkmate_eval;
+    }
+    return 0;  // stalemate
+}
+}  // namespace

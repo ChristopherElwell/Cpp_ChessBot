@@ -24,28 +24,41 @@ void evaluate_pc(const BitBoard& board, int& mg_eval, int& eg_eval, int& mg_to_e
 }
 }  // namespace
 
+template <side_t Side>
 auto evaluate(const BitBoard& board) -> int
 {
-    int mg_eval = 0;
-    int eg_eval = 0;
+    int white_mg_eval = 0;
+    int white_eg_eval = 0;
+    int black_mg_eval = 0;
+    int black_eg_eval = 0;
     int mg_to_eg_counter = 0;
 
-    evaluate_pc<piece_t::black_pawn>(board, mg_eval, eg_eval, mg_to_eg_counter);
-    evaluate_pc<piece_t::black_knight>(board, mg_eval, eg_eval, mg_to_eg_counter);
-    evaluate_pc<piece_t::black_bishop>(board, mg_eval, eg_eval, mg_to_eg_counter);
-    evaluate_pc<piece_t::black_rook>(board, mg_eval, eg_eval, mg_to_eg_counter);
-    evaluate_pc<piece_t::black_queen>(board, mg_eval, eg_eval, mg_to_eg_counter);
-    evaluate_pc<piece_t::black_king>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_pawn>(board, white_mg_eval, white_eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_knight>(board, white_mg_eval, white_eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_bishop>(board, white_mg_eval, white_eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_rook>(board, white_mg_eval, white_eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_queen>(board, white_mg_eval, white_eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::white_king>(board, white_mg_eval, white_eg_eval, mg_to_eg_counter);
 
-    mg_eval = -mg_eval;
-    eg_eval = -eg_eval;
+    evaluate_pc<piece_t::black_pawn>(board, black_mg_eval, black_eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::black_knight>(board, black_mg_eval, black_eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::black_bishop>(board, black_mg_eval, black_eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::black_rook>(board, black_mg_eval, black_eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::black_queen>(board, black_mg_eval, black_eg_eval, mg_to_eg_counter);
+    evaluate_pc<piece_t::black_king>(board, black_mg_eval, black_eg_eval, mg_to_eg_counter);
 
-    evaluate_pc<piece_t::white_pawn>(board, mg_eval, eg_eval, mg_to_eg_counter);
-    evaluate_pc<piece_t::white_knight>(board, mg_eval, eg_eval, mg_to_eg_counter);
-    evaluate_pc<piece_t::white_bishop>(board, mg_eval, eg_eval, mg_to_eg_counter);
-    evaluate_pc<piece_t::white_rook>(board, mg_eval, eg_eval, mg_to_eg_counter);
-    evaluate_pc<piece_t::white_queen>(board, mg_eval, eg_eval, mg_to_eg_counter);
-    evaluate_pc<piece_t::white_king>(board, mg_eval, eg_eval, mg_to_eg_counter);
+    int mg_eval = 0;
+    int eg_eval = 0;
+    if constexpr (Side == side_t::white)
+    {
+        mg_eval = white_mg_eval - black_mg_eval;
+        eg_eval = white_eg_eval - black_eg_eval;
+    }
+    else
+    {
+        mg_eval = black_mg_eval - white_mg_eval;
+        eg_eval = black_eg_eval - white_eg_eval;
+    }
 
     if (mg_to_eg_counter > mg_eg_piece_threshold)
     {
@@ -54,3 +67,6 @@ auto evaluate(const BitBoard& board) -> int
     return ((mg_eval * mg_to_eg_counter) + (eg_eval * (mg_eg_piece_threshold - mg_to_eg_counter))) /
            mg_eg_piece_threshold;
 }
+
+template auto evaluate<side_t::white>(const BitBoard& board) -> int;
+template auto evaluate<side_t::black>(const BitBoard& board) -> int;
