@@ -109,10 +109,6 @@ void run_perft_test(int max_draft)
 
 namespace
 {
-// Same pseudo-legal-then-filter approach as perft_search, but keeps each root
-// move's subtree count instead of summing them away, so it can be printed and
-// diffed against a reference divide (e.g. via perft_debug.py) to find exactly
-// which move a discrepancy comes from.
 template <side_t Side>
 void perft_divide_impl(BitBoard &board, int depth)
 {

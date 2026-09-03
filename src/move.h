@@ -3,26 +3,8 @@
 #include <string>
 
 #include "bitboard.h"
+#include "bitboard_constants.h"
 #include "zobrist.h"
-
-enum class move_type_t : uint8_t
-{
-    quiet,
-    capture,
-    promote_queen,
-    promote_rook,
-    promote_bishop,
-    promote_knight,
-    capture_promote_queen,
-    capture_promote_rook,
-    capture_promote_bishop,
-    capture_promote_knight,
-    castle_kingside,
-    castle_queenside,
-    pawn_double,
-    en_passent,
-    moves_termination
-};
 
 inline auto move_type_to_string(move_type_t move_type) -> std::string
 {

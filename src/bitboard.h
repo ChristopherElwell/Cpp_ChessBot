@@ -5,6 +5,7 @@
 #include <string>
 
 #include "bitboard_constants.h"
+#include "move.h"
 #include "zobrist.h"
 
 class Move;
@@ -93,6 +94,10 @@ private:
     static auto sq_from_name(char file, char rank) -> uint64_t;
     template <side_t Side>
     void apply_mask(piece_t piece, uint64_t mask);
+
+    template <side_t Side>
+    auto mask_move(move_type_t type, piece_t moving_pc, uint64_t from_mask, uint64_t to_mask,
+                   piece_t captured_pc = piece_t::none);
 
 public:
     static constexpr int num_squares = 64;
