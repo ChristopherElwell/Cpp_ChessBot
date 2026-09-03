@@ -49,5 +49,11 @@ template <side_t Side>
 inline constexpr piece_t queen = piece_for<Side, piece_t::white_queen>;
 template <side_t Side>
 inline constexpr piece_t king = piece_for<Side, piece_t::white_king>;
+template <side_t Side>
+inline constexpr piece_t all = piece_t::white_pcs;
+template <>
+inline constexpr piece_t all<side_t::white> = piece_t::white_pcs;
+template <>
+inline constexpr piece_t all<side_t::black> = piece_t::black_pcs;
 }  // namespace piece
 #endif

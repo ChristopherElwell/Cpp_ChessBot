@@ -368,7 +368,9 @@ void MoveGen::get_white_king_moves()
         attacks = get_black_attackers(m_board);
         if ((attacks & castling<side_t::white>::kingside_attacked) == 0)
         {
-            m_movs[m_idx++] = Move();
+            m_movs[m_idx++] =
+                Move(castling<side_t::white>::kingside_king_from,
+                     castling<side_t::white>::kingside_king_to, move_type_t::castle_kingside);
         }
     }
     if (((m_board[piece_t::info] & castling<side_t::white>::queenside_right) != 0) &&
@@ -383,7 +385,9 @@ void MoveGen::get_white_king_moves()
 
         if ((attacks & castling<side_t::white>::queenside_attacked) == 0)
         {
-            m_movs[m_idx++] = Move();
+            m_movs[m_idx++] =
+                Move(castling<side_t::white>::queenside_king_from,
+                     castling<side_t::white>::queenside_king_to, move_type_t::castle_queenside);
         }
     }
 }

@@ -91,6 +91,8 @@ private:
 
     static constexpr uint64_t turn_bit = 0b10000;
     static auto sq_from_name(char file, char rank) -> uint64_t;
+    template <side_t Side>
+    void apply_mask(piece_t piece, uint64_t mask);
 
 public:
     static constexpr int num_squares = 64;
