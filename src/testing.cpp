@@ -10,6 +10,7 @@
 #include <print>
 #include <ranges>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -104,6 +105,183 @@ void run_perft_test(int max_draft)
     }
     println("Perft test complete\nPass rate: {:.0f}%\n",
             static_cast<float>(tests_passed) / static_cast<float>(perft_tests.size()) * 100);
+}
+
+namespace
+{
+// Same pseudo-legal-then-filter approach as perft_search, but keeps each root
+// move's subtree count instead of summing them away, so it can be printed and
+// diffed against a reference divide (e.g. via perft_debug.py) to find exactly
+// which move a discrepancy comes from.
+template <side_t Side>
+void perft_divide_impl(BitBoard &board, int depth)
+{
+    auto move_gen = MoveGen(board);
+    move_gen.gen<Side>();
+
+    vector<pair<string, uint64_t>> results;
+    uint64_t total = 0;
+
+    for (const Move &move : move_gen)
+    {
+        const inv_move inverse = board.apply_move<Side>(move);
+        if (move_gen.is_king_in_check<Side>())
+        {
+            board.undo_move<Side>(move, inverse);
+            continue;
+        }
+        const uint64_t count = perft_search<~Side>(board, depth - 1);
+        results.emplace_back(Engine::move_to_uci(move), count);
+        total += count;
+        board.undo_move<Side>(move, inverse);
+    }
+
+    for (const auto &[uci, count] : results)
+    {
+        println("{}: {}", uci, count);
+    }
+    println("\nNodes searched: {}", total);
+}
+}  // namespace
+
+void run_perft_divide(const string &fen, int depth)
+{
+    if (depth < 1)
+    {
+        println("Depth must be >= 1");
+        return;
+    }
+    auto board = BitBoard(fen);
+    if (board.side_to_move() == side_t::white)
+    {
+        perft_divide_impl<side_t::white>(board, depth);
+    }
+    else
+    {
+        perft_divide_impl<side_t::black>(board, depth);
+    }
+}
+
+void debug_check_state_after_move(const string &fen, const string &uci)
+{
+    auto board = BitBoard(fen);
+    const Move mov = Engine::uci_to_move(uci, board);
+
+    if (board.side_to_move() == side_t::white)
+    {
+        board.apply_move<side_t::white>(mov);
+    }
+    else
+    {
+        board.apply_move<side_t::black>(mov);
+    }
+
+    const uint64_t incremental_hash = board.hash().get();
+    const string fen_after = board.to_fen();
+    const ZobristHash fresh_hash = ZobristHash(BitBoard(fen_after));
+
+    println("Move:                 {}", uci);
+    println("FEN after (to_fen()): {}", fen_after);
+    println("Incremental hash:     {:016X}", incremental_hash);
+    println("Fresh-parse hash:     {:016X}", fresh_hash.get());
+    if (incremental_hash == fresh_hash.get())
+    {
+        println(
+            "MATCH -- hash-visible state (pieces, side, castling rights, ep square) is "
+            "consistent.\nIf perft still disagrees here, the stale field is something NOT covered "
+            "by the hash -- e.g. a combined occupancy/attack/checkers bitboard used only by move "
+            "generation.");
+    }
+    else
+    {
+        println(
+            "MISMATCH -- apply_move is leaving hash-relevant state out of sync (piece placement, "
+            "side to move, castling rights, or en passant square).");
+    }
+}
+
+namespace
+{
+auto join_path(const vector<string> &path) -> string
+{
+    if (path.empty())
+    {
+        return "(root)";
+    }
+    string out;
+    for (const auto &uci : path)
+    {
+        if (!out.empty())
+        {
+            out += ' ';
+        }
+        out += uci;
+    }
+    return out;
+}
+
+template <side_t Side>
+auto perft_verify_impl(BitBoard &board, int iter, vector<string> &path) -> uint64_t
+{
+    if (iter == 0)
+    {
+        return 1;
+    }
+
+    uint64_t perft = 0;
+    auto move_gen = MoveGen(board);
+    move_gen.gen<Side>();
+
+    for (const Move &move : move_gen)
+    {
+        const uint64_t hash_before = board.hash().get();
+        const inv_move inverse = board.apply_move<Side>(move);
+
+        if (move_gen.is_king_in_check<Side>())
+        {
+            board.undo_move<Side>(move, inverse);
+        }
+        else
+        {
+            path.push_back(Engine::move_to_uci(move));
+            perft += perft_verify_impl<~Side>(board, iter - 1, path);
+            path.pop_back();
+            board.undo_move<Side>(move, inverse);
+        }
+
+        const uint64_t hash_after_undo = board.hash().get();
+        if (hash_after_undo != hash_before)
+        {
+            path.push_back(Engine::move_to_uci(move));
+            println("UNDO MISMATCH\n  Move path to failure: {}", join_path(path));
+            println("  Hash before apply:    {:016X}", hash_before);
+            println("  Hash after undo:      {:016X}", hash_after_undo);
+            println(
+                "  -> undo_move did not perfectly reverse apply_move for this move type / "
+                "position. This is state left behind for the *next* sibling move to inherit, "
+                "not a move-generation bug.");
+            throw runtime_error("perft_verify: undo did not restore state");
+        }
+    }
+    return perft;
+}
+}  // namespace
+
+void run_perft_verify(const string &fen, int depth)
+{
+    auto board = BitBoard(fen);
+    vector<string> path;
+    try
+    {
+        const uint64_t total = board.side_to_move() == side_t::white
+                                   ? perft_verify_impl<side_t::white>(board, depth, path)
+                                   : perft_verify_impl<side_t::black>(board, depth, path);
+        println("No undo mismatch found through depth {}. Perft({}) = {}", depth, depth, total);
+    }
+    catch (const exception &e)
+    {
+        println("Stopped early: {}", e.what());
+    }
 }
 
 void test_puzzles(size_t count)
