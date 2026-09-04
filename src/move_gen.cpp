@@ -211,32 +211,26 @@ void MoveGen::pawn_taking_moves(const int offset)
 
     for (const auto take : bit_scan(takes))
     {
-        for (auto const piece : piece_range::no_king<~Side>())
+        const piece_t taken_pc = m_board.piece_at(take);
+        if (taken_pc == piece_t::none)
         {
-            const uint64_t taken_piece = take & m_board[piece];
+            continue;
+        }
 
-            if (taken_piece == 0)
-            {
-                continue;
-            }
+        const uint64_t promotion_sq = take & side_traits<Side>::rank_8;
 
-            const uint64_t promotion_sq = take & side_traits<Side>::rank_8;
+        if (promotion_sq != 0)
+        {
+            const uint64_t from = shift(take, -offset);
 
-            if (promotion_sq != 0)
-            {
-                const uint64_t from = shift(take, -offset);
-
-                m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_queen);
-                m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_rook);
-                m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_bishop);
-                m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_knight);
-            }
-            else
-            {
-                m_movs[m_idx++] = Move(shift(take, -offset), take, move_type_t::capture);
-            }
-
-            break;
+            m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_queen);
+            m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_rook);
+            m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_bishop);
+            m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_knight);
+        }
+        else
+        {
+            m_movs[m_idx++] = Move(shift(take, -offset), take, move_type_t::capture);
         }
     }
 }
@@ -328,16 +322,12 @@ void MoveGen::add_to_movs(const uint64_t moving_pc_spot, const uint64_t moves)
 
     for (const auto taking_spot : bit_scan(moves & m_board[piece::all<~Side>]))
     {
-        for (const auto taken_pc : piece_range::no_king<~Side>())
+        const piece_t taken_pc = m_board.piece_at(taking_spot);
+        if (taken_pc == piece_t::none)
         {
-            const uint64_t taken_spot = taking_spot & m_board[taken_pc];
-
-            if (taken_spot != 0)
-            {
-                m_movs[m_idx++] = Move(moving_pc_spot, taken_spot, move_type_t::capture);
-                break;
-            }
+            continue;
         }
+        m_movs[m_idx++] = Move(moving_pc_spot, taking_spot, move_type_t::capture);
     }
 }
 

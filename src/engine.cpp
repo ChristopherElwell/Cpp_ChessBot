@@ -184,8 +184,7 @@ auto Engine::bitboard_to_string(const uint64_t& board) -> string
     {
         if (i % 8 == 0)
         {
-        C:
-            \repos\Cpp_ChessBot\out\build\Release\ElwellBot.exe out += format("{} ", 8 - (i / 8));
+            out += format("{} ", 8 - (i / 8));
         }
         if ((board & (1ULL << (num_squares - 1 - i))) != 0)
         {

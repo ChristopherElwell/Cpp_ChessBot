@@ -132,8 +132,8 @@ public:
                                                                           : side_t::black;
     }
     auto hash() -> ZobristHash;
-    auto piece_at(int pos) -> piece_t;
-    auto piece_at(uint64_t mask) -> piece_t;
+    auto piece_at(int pos) const -> piece_t;
+    auto piece_at(uint64_t mask) const -> piece_t;
 };
 
 #endif

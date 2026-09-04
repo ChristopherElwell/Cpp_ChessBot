@@ -469,9 +469,9 @@ auto BitBoard::sq_from_name(char file, char rank) -> uint64_t
 
 auto BitBoard::hash() -> ZobristHash { return m_hash; }
 
-auto BitBoard::piece_at(int pos) -> piece_t { return piece_at(1ULL << pos); }
+auto BitBoard::piece_at(int pos) const -> piece_t { return piece_at(1ULL << pos); }
 
-auto BitBoard::piece_at(uint64_t mask) -> piece_t
+auto BitBoard::piece_at(uint64_t mask) const -> piece_t
 {
     for (const piece_t piece : piece_range::all())
     {
