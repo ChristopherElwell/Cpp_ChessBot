@@ -46,7 +46,7 @@ BitBoard::BitBoard(const string& fen)
             case 'q':
             case 'k':
                 m_board[static_cast<int>(piece_symbol_to_piece_t.at(piece))] |=
-                    1LL << (BitBoard::num_squares - 1 - sqr);
+                    1LL << (num_squares - 1 - sqr);
                 sqr++;
                 break;
             case '1':
@@ -132,7 +132,7 @@ BitBoard::BitBoard(const string& fen)
 auto BitBoard::to_fen() const -> string
 {
     // index -> char lookup, built from each piece bitboard via bit_scan
-    std::array<char, BitBoard::num_squares> board_chars{};
+    std::array<char, num_squares> board_chars{};
     board_chars.fill(0);
 
     for (const auto piece : piece_range::all())
@@ -215,7 +215,7 @@ auto BitBoard::to_fen() const -> string
     else
     {
         const int index = std::countr_zero(ep_bits);
-        const int sqr = BitBoard::num_squares - 1 - index;  // inverse of the constructor's packing
+        const int sqr = num_squares - 1 - index;  // inverse of the constructor's packing
         const int rank = 8 - (sqr / 8);
         const char file = static_cast<char>('a' + (sqr % 8));
         fen += file;
@@ -437,12 +437,12 @@ auto BitBoard::mask_move(move_type_t type, piece_t moving_pc, uint64_t from_mask
 auto BitBoard::draw() const -> string
 {
     string out = "8 ";
-    for (int i = 0; i < BitBoard::num_squares; i++)
+    for (int i = 0; i < num_squares; i++)
     {
         int piece_found = 0;
         for (const auto piece : piece_range::all())
         {
-            if ((operator[](piece) & (1ULL << (BitBoard::num_squares - 1 - i))) != 0)
+            if ((operator[](piece) & (1ULL << (num_squares - 1 - i))) != 0)
             {
                 out += piece_t_to_piece_symbol.at(piece);
                 out += " ";
@@ -454,7 +454,7 @@ auto BitBoard::draw() const -> string
         {
             out += "  ";
         }
-        if ((i + 1) % 8 == 0 && i != BitBoard::num_squares - 1)
+        if ((i + 1) % 8 == 0 && i != num_squares - 1)
         {
             out += format("\n{} ", 8 - ((i + 1) / 8));
         }

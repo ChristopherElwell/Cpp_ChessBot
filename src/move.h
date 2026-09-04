@@ -1,8 +1,8 @@
-#pragma once
+#ifndef MOVE_H
+#define MOVE_H
 #include <cstdint>
 #include <string>
 
-#include "bitboard.h"
 #include "bitboard_constants.h"
 #include "zobrist.h"
 
@@ -70,3 +70,5 @@ public:
 
     [[nodiscard]] auto to_string() const -> std::string;
 };
+
+#endif

@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "bitboard.h"
+#include "bitboard_constants.h"
 #include "bitscan.h"
 #include "data.h"
 #include "move.h"
@@ -13,7 +14,6 @@ using namespace std;
 namespace
 {
 constexpr size_t num_pieces = 12;
-constexpr size_t num_squares = 64;
 constexpr size_t num_keys = num_pieces * num_squares;
 constexpr size_t num_en_passent_keys = 8;
 constexpr size_t num_castling_rights_keys = 4;

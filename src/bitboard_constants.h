@@ -3,6 +3,11 @@
 
 #include <cstdint>
 
+namespace
+{
+constexpr int num_squares = 64;
+}
+
 enum class move_type_t : uint8_t
 {
     quiet,

@@ -53,36 +53,47 @@ public:
         return iterator{end};
     }
 
-    piece_range(piece_t start, piece_t stop) : m_start(start), m_stop(stop) {};
-    static auto black() -> piece_range
-    {
-        return piece_range{piece_t::black_pawn, piece_t::black_king};
-    }
-    static auto white() -> piece_range
-    {
-        return piece_range{piece_t::white_pawn, piece_t::white_king};
-    }
-    static auto black_no_king() -> piece_range
-    {
-        return piece_range{piece_t::black_pawn, piece_t::black_queen};
-    }
-    static auto white_no_king() -> piece_range
-    {
-        return piece_range{piece_t::white_pawn, piece_t::white_queen};
-    }
+    piece_range(piece_t start, piece_t stop) : m_start(start), m_stop(stop) {}
+
+    // no color needed — literally every piece, both sides
     static auto all() -> piece_range
     {
         return piece_range{piece_t::white_pawn, piece_t::black_king};
     }
-    static auto all_and_info() -> piece_range
+
+    // color-specific versions, each their own template
+    template <side_t Side>
+    static auto all() -> piece_range
     {
-        return piece_range{piece_t::white_pawn, piece_t::black_king};
+        if constexpr (Side == side_t::white)
+        {
+            return piece_range{piece_t::white_pawn, piece_t::white_king};
+        }
+        else
+        {
+            return piece_range{piece_t::black_pawn, piece_t::black_king};
+        }
+    }
+
+    template <side_t Side>
+    static auto no_king() -> piece_range
+    {
+        if constexpr (Side == side_t::white)
+        {
+            return piece_range{piece_t::white_pawn, piece_t::white_queen};
+        }
+        else
+        {
+            return piece_range{piece_t::black_pawn, piece_t::black_queen};
+        }
     }
 
 private:
     piece_t m_start;
     piece_t m_stop;
 };
+;
+;
 
 class BitBoard
 {
@@ -100,8 +111,6 @@ private:
                    piece_t captured_pc = piece_t::none);
 
 public:
-    static constexpr int num_squares = 64;
-
     static auto start_position() -> BitBoard;
     BitBoard(const std::string& fen);
     [[nodiscard]] auto to_fen() const -> std::string;

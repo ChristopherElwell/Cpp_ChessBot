@@ -162,14 +162,14 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard& board) -> string
     MoveGen move_gen(board);
     if (board.side_to_move() == side_t::white)
     {
-        if (move_gen.is_white_king_in_check())
+        if (move_gen.is_king_in_check<side_t::white>())
         {
             out += "+";
         }
     }
     else
     {
-        if (move_gen.is_black_king_in_check())
+        if (move_gen.is_king_in_check<side_t::black>())
         {
             out += "+";
         }
@@ -180,13 +180,14 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard& board) -> string
 auto Engine::bitboard_to_string(const uint64_t& board) -> string
 {
     string out;
-    for (int i = 0; i < BitBoard::num_squares; i++)
+    for (int i = 0; i < num_squares; i++)
     {
         if (i % 8 == 0)
         {
-            out += format("{} ", 8 - (i / 8));
+        C:
+            \repos\Cpp_ChessBot\out\build\Release\ElwellBot.exe out += format("{} ", 8 - (i / 8));
         }
-        if ((board & (1ULL << (BitBoard::num_squares - 1 - i))) != 0)
+        if ((board & (1ULL << (num_squares - 1 - i))) != 0)
         {
             out += white_sq_char;
         }
