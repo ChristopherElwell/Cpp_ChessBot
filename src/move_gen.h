@@ -2,6 +2,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <ranges>
 
 #include "bitboard.h"
 #include "data.h"
@@ -35,17 +36,23 @@ struct side_traits
         (Side == side_t::white) ? masks::file_a & masks::rank_1 : masks::file_a & masks::rank_8;
 };
 
+struct scored_move
+{
+    int score;
+    Move move;
+};
+
 class MoveGen
 {
 private:
-    std::array<Move, moves_array_length> m_movs;
+    std::array<scored_move, moves_array_length> m_movs;
     size_t m_idx = 0;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
     const BitBoard &m_board;
     ptrdiff_t m_end_idx = 0;
 
     template <side_t Side>
-    void add_to_movs(uint64_t moving_pc_spot, uint64_t moves);
+    void add_to_movs(piece_t moving_pc, uint64_t moving_pc_spot, uint64_t moves);
 
     template <side_t Side>
     [[nodiscard]] auto get_rook_attacks(uint64_t rook) const -> uint64_t;
@@ -67,14 +74,12 @@ private:
     template <side_t Side>
     void get_king_moves();
 
-    // static auto compare_moves(const move &mov_a, const move &mov_b) -> bool;
+    static auto score_move(move_type_t type, piece_t moving_pc,
+                           piece_t capturing_pc = piece_t::none) -> int;
+    static auto to_move(const scored_move &move) -> const Move & { return move.move; }
 
 public:
-    [[nodiscard]]
-    auto length() const -> int
-    {
-        return static_cast<int>(m_end_idx);
-    }
+    [[nodiscard]] auto length() const -> int { return static_cast<int>(m_end_idx); }
 
     auto at(size_t idx) -> Move &;
     [[nodiscard]] auto at(size_t idx) const -> const Move &;
@@ -90,7 +95,7 @@ public:
 
     MoveGen(const BitBoard &board);
 
-    auto operator[](int idx) -> Move { return m_movs[idx]; }
+    auto operator[](int idx) -> Move { return m_movs[idx].move; }
 
     ~MoveGen() = default;
     MoveGen(const MoveGen &) = delete;
@@ -98,12 +103,12 @@ public:
     MoveGen(MoveGen &&) = delete;
     auto operator=(MoveGen &&other) -> MoveGen & = delete;
 
-    [[nodiscard]] auto begin() const -> std::array<Move, moves_array_length>::const_iterator
+    [[nodiscard]] auto begin() const
     {
-        return m_movs.begin();
+        return (m_movs | std::views::take(m_end_idx) | std::views::transform(to_move)).begin();
     }
-    [[nodiscard]] auto end() const -> std::array<Move, moves_array_length>::const_iterator
+    [[nodiscard]] auto end() const
     {
-        return m_movs.begin() + m_end_idx;
+        return (m_movs | std::views::take(m_end_idx) | std::views::transform(to_move)).end();
     }
 };

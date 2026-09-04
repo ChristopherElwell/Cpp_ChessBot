@@ -39,6 +39,30 @@ template <int Shift>
     }
     return bits >> -shift;
 }
+
+[[nodiscard]] constexpr auto piece_kind(piece_t piece) -> int
+{
+    return static_cast<int>(piece) % 6;
+}
+
+constexpr int type_bucket = 64;
+
+constexpr std::array<int, static_cast<size_t>(move_type_t::moves_termination)> type_priority = {
+    /* quiet                  */ 0,
+    /* capture                */ 6,
+    /* promote_queen          */ 8,
+    /* promote_rook           */ 5,
+    /* promote_bishop         */ 4,
+    /* promote_knight         */ 4,
+    /* capture_promote_queen  */ 9,
+    /* capture_promote_rook   */ 7,
+    /* capture_promote_bishop */ 7,
+    /* capture_promote_knight */ 7,
+    /* castle_kingside        */ 3,
+    /* castle_queenside       */ 3,
+    /* pawn_double             */ 1,
+    /* en_passent              */ 6,
+};
 }  // namespace
 
 template <side_t Side>
@@ -112,7 +136,7 @@ void MoveGen::get_knight_moves()
         const uint64_t moves =
             move_masks::knight_moves[countr_zero(knight)] & ~m_board[piece::all<Side>];
 
-        add_to_movs<Side>(knight, moves);
+        add_to_movs<Side>(piece::knight<Side>, knight, moves);
     }
 }
 
@@ -122,7 +146,7 @@ void MoveGen::get_rook_moves()
     for (const auto rook : bit_scan(m_board[piece::rook<Side>]))
     {
         const uint64_t moves = get_rook_attacks<Side>(rook);
-        add_to_movs<Side>(rook, moves);
+        add_to_movs<Side>(piece::rook<Side>, rook, moves);
     }
 }
 
@@ -133,7 +157,7 @@ void MoveGen::get_bishop_moves()
     {
         const uint64_t moves = get_bishop_attacks<Side>(bishop);
 
-        add_to_movs<Side>(bishop, moves);
+        add_to_movs<Side>(piece::bishop<Side>, bishop, moves);
     }
 }
 
@@ -147,8 +171,9 @@ void MoveGen::get_pawn_moves()
 
     for (const auto move : bit_scan(one_step))
     {
-        m_movs[m_idx++] =
+        m_movs[m_idx].move =
             Move(shift<-side_traits<Side>::pawn_push_dir>(move), move, move_type_t::quiet);
+        m_movs[m_idx++].score = score_move(move_type_t::quiet, piece::pawn<Side>);
     }
 
     const uint64_t one_step_prom = shift<side_traits<Side>::pawn_push_dir>(pawns) &
@@ -158,10 +183,14 @@ void MoveGen::get_pawn_moves()
     {
         const uint64_t from = shift<-side_traits<Side>::pawn_push_dir>(move);
 
-        m_movs[m_idx++] = Move(from, move, move_type_t::promote_queen);
-        m_movs[m_idx++] = Move(from, move, move_type_t::promote_rook);
-        m_movs[m_idx++] = Move(from, move, move_type_t::promote_bishop);
-        m_movs[m_idx++] = Move(from, move, move_type_t::promote_knight);
+        m_movs[m_idx].move = Move(from, move, move_type_t::promote_queen);
+        m_movs[m_idx++].score = score_move(move_type_t::promote_queen, piece::pawn<Side>);
+        m_movs[m_idx].move = Move(from, move, move_type_t::promote_rook);
+        m_movs[m_idx++].score = score_move(move_type_t::promote_rook, piece::pawn<Side>);
+        m_movs[m_idx].move = Move(from, move, move_type_t::promote_bishop);
+        m_movs[m_idx++].score = score_move(move_type_t::promote_bishop, piece::pawn<Side>);
+        m_movs[m_idx].move = Move(from, move, move_type_t::promote_knight);
+        m_movs[m_idx++].score = score_move(move_type_t::promote_knight, piece::pawn<Side>);
     }
 
     const uint64_t two_steps =
@@ -171,8 +200,9 @@ void MoveGen::get_pawn_moves()
 
     for (const auto move : bit_scan(two_steps))
     {
-        m_movs[m_idx++] = Move(shift<-2 * side_traits<Side>::pawn_push_dir>(move), move,
-                               move_type_t::pawn_double);
+        m_movs[m_idx].move = Move(shift<-2 * side_traits<Side>::pawn_push_dir>(move), move,
+                                  move_type_t::pawn_double);
+        m_movs[m_idx++].score = score_move(move_type_t::pawn_double, piece::pawn<Side>);
     }
 
     pawn_taking_moves<Side>(side_traits<Side>::pawn_take_w);
@@ -184,8 +214,10 @@ void MoveGen::get_pawn_moves()
 
     if (en_passent_take_w != 0)
     {
-        m_movs[m_idx++] = Move(shift<-side_traits<Side>::pawn_take_w>(en_passent_take_w),
-                               en_passent_take_w, move_type_t::en_passent);
+        m_movs[m_idx].move = Move(shift<-side_traits<Side>::pawn_take_w>(en_passent_take_w),
+                                  en_passent_take_w, move_type_t::en_passent);
+        m_movs[m_idx++].score =
+            score_move(move_type_t::en_passent, piece::pawn<Side>, piece::pawn<~Side>);
     }
 
     const uint64_t en_passent_take_e =
@@ -194,8 +226,10 @@ void MoveGen::get_pawn_moves()
 
     if (en_passent_take_e != 0)
     {
-        m_movs[m_idx++] = Move(shift<-side_traits<Side>::pawn_take_e>(en_passent_take_e),
-                               en_passent_take_e, move_type_t::en_passent);
+        m_movs[m_idx].move = Move(shift<-side_traits<Side>::pawn_take_e>(en_passent_take_e),
+                                  en_passent_take_e, move_type_t::en_passent);
+        m_movs[m_idx++].score =
+            score_move(move_type_t::en_passent, piece::pawn<Side>, piece::pawn<~Side>);
     }
 }
 
@@ -223,14 +257,23 @@ void MoveGen::pawn_taking_moves(const int offset)
         {
             const uint64_t from = shift(take, -offset);
 
-            m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_queen);
-            m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_rook);
-            m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_bishop);
-            m_movs[m_idx++] = Move(from, promotion_sq, move_type_t::capture_promote_knight);
+            m_movs[m_idx].move = Move(from, promotion_sq, move_type_t::capture_promote_queen);
+            m_movs[m_idx++].score =
+                score_move(move_type_t::capture_promote_queen, piece::pawn<Side>, taken_pc);
+            m_movs[m_idx].move = Move(from, promotion_sq, move_type_t::capture_promote_rook);
+            m_movs[m_idx++].score =
+                score_move(move_type_t::capture_promote_rook, piece::pawn<Side>, taken_pc);
+            m_movs[m_idx].move = Move(from, promotion_sq, move_type_t::capture_promote_bishop);
+            m_movs[m_idx++].score =
+                score_move(move_type_t::capture_promote_bishop, piece::pawn<Side>, taken_pc);
+            m_movs[m_idx].move = Move(from, promotion_sq, move_type_t::capture_promote_knight);
+            m_movs[m_idx++].score =
+                score_move(move_type_t::capture_promote_knight, piece::pawn<Side>, taken_pc);
         }
         else
         {
-            m_movs[m_idx++] = Move(shift(take, -offset), take, move_type_t::capture);
+            m_movs[m_idx].move = Move(shift(take, -offset), take, move_type_t::capture);
+            m_movs[m_idx++].score = score_move(move_type_t::capture, piece::pawn<Side>, taken_pc);
         }
     }
 }
@@ -243,7 +286,7 @@ void MoveGen::get_king_moves()
     const uint64_t moves =
         move_masks::king_moves.at(countr_zero(king)) & ~m_board[piece::all<Side>];
 
-    add_to_movs<Side>(king, moves);
+    add_to_movs<Side>(piece::king<Side>, king, moves);
 
     uint64_t attacks = 0;
 
@@ -265,8 +308,10 @@ void MoveGen::get_king_moves()
 
         if (kingside_path_is_safe)
         {
-            m_movs[m_idx++] = Move(castling<Side>::kingside_king_from,
-                                   castling<Side>::kingside_king_to, move_type_t::castle_kingside);
+            m_movs[m_idx].move =
+                Move(castling<Side>::kingside_king_from, castling<Side>::kingside_king_to,
+                     move_type_t::castle_kingside);
+            m_movs[m_idx++].score = score_move(move_type_t::castle_kingside, piece::king<Side>);
         }
     }
 
@@ -294,9 +339,10 @@ void MoveGen::get_king_moves()
 
         if (queenside_path_is_safe)
         {
-            m_movs[m_idx++] =
+            m_movs[m_idx].move =
                 Move(castling<Side>::queenside_king_from, castling<Side>::queenside_king_to,
                      move_type_t::castle_queenside);
+            m_movs[m_idx++].score = score_move(move_type_t::castle_queenside, piece::king<Side>);
         }
     }
 }
@@ -308,16 +354,18 @@ void MoveGen::get_queen_moves()
     {
         const uint64_t moves = get_bishop_attacks<Side>(queen) | get_rook_attacks<Side>(queen);
 
-        add_to_movs<Side>(queen, moves);
+        add_to_movs<Side>(piece::queen<Side>, queen, moves);
     }
 }
 
 template <side_t Side>
-void MoveGen::add_to_movs(const uint64_t moving_pc_spot, const uint64_t moves)
+void MoveGen::add_to_movs(const piece_t moving_pc, const uint64_t moving_pc_spot,
+                          const uint64_t moves)
 {
     for (const auto mov : bit_scan(moves & ~m_board[piece::all<~Side>]))
     {
-        m_movs[m_idx++] = Move(moving_pc_spot, mov, move_type_t::quiet);
+        m_movs[m_idx].move = Move(moving_pc_spot, mov, move_type_t::quiet);
+        m_movs[m_idx++].score = score_move(move_type_t::quiet, moving_pc);
     }
 
     for (const auto taking_spot : bit_scan(moves & m_board[piece::all<~Side>]))
@@ -327,7 +375,8 @@ void MoveGen::add_to_movs(const uint64_t moving_pc_spot, const uint64_t moves)
         {
             continue;
         }
-        m_movs[m_idx++] = Move(moving_pc_spot, taking_spot, move_type_t::capture);
+        m_movs[m_idx].move = Move(moving_pc_spot, taking_spot, move_type_t::capture);
+        m_movs[m_idx++].score = score_move(move_type_t::capture, moving_pc, taken_pc);
     }
 }
 
@@ -413,51 +462,55 @@ auto MoveGen::is_king_in_check() const -> bool
     return attacked_by_pawn;
 }
 
-// auto MoveGen::compare_moves(const Move &mov_a, const Move &mov_b) -> bool
-// {
-//     const piece_t a_moved = m_board.piece_at(mov_a.from());
-//     const piece_t a_captured = m_board.piece_at(mov_a.to());
-//     // First compare move types
-//     if (mov_a.type() != mov_b.type())
-//     {
-//         return mov_a.type() > mov_b.type();  // Higher type comes first
-//     }
-//
-//     // If the move types are the same, compare based on move type
-//     switch (mov_a.type())
-//     {
-//         case move_type_t::quiet:
-//             return mov_a.pc1 > mov_b.pc1;  // Higher pc2 comes first
-//
-//         case move_type_t::capture:
-//             // Primary: compare captured pieces (pc2)
-//             if (mov_b.pc2 != mov_a.pc2)
-//             {
-//                 return mov_a.pc2 > mov_b.pc2;  // Higher pc2 comes first
-//             }
-//             // Secondary: compare capturing pieces (pc1)
-//             return mov_b.pc1 > mov_a.pc1;  // Lower pc1 comes first
-//
-//         case move_type_t::promote:
-//             return mov_a.pc2 > mov_b.pc2;  // Higher promotion piece comes first
-//
-//         case move_type_t::capture_promote:
-//             // Primary: compare promotion piece (pc3)
-//             if (mov_b.pc3 != mov_a.pc3)
-//             {
-//                 return mov_a.pc3 > mov_b.pc3;  // Higher pc3 comes first
-//             }
-//             // Secondary: compare captured pieces (pc2)
-//             return mov_a.pc2 > mov_b.pc2;  // Higher pc2 comes first
-//
-//         default:
-//             return false;  // Equal (maintains stable sort)
-//     }
-// }
+auto MoveGen::score_move(move_type_t type, piece_t moving_pc, piece_t capturing_pc) -> int
+{
+    int score = type_priority[static_cast<size_t>(type)] * type_bucket;
 
-auto MoveGen::at(size_t idx) -> Move & { return m_movs[idx]; }
+    switch (type)
+    {
+        case move_type_t::quiet:
+        case move_type_t::pawn_double:
+        case move_type_t::castle_kingside:
+        case move_type_t::castle_queenside:
+            // Higher-kind piece moving scores slightly higher; mostly a
+            // stable tiebreak, no capture involved.
+            score += piece_kind(moving_pc);
+            break;
 
-auto MoveGen::at(size_t idx) const -> const Move & { return m_movs[idx]; }
+        case move_type_t::capture:
+        case move_type_t::en_passent:
+            // MVV-LVA: most valuable victim first, least valuable attacker
+            // as tiebreak.
+            score += (piece_kind(capturing_pc) * 8) - piece_kind(moving_pc);
+            break;
+
+        case move_type_t::promote_queen:
+        case move_type_t::promote_rook:
+        case move_type_t::promote_bishop:
+        case move_type_t::promote_knight:
+            // Promotion piece is already encoded by `type`'s bucket;
+            // nothing further to break ties on (moving_pc is always a pawn).
+            break;
+
+        case move_type_t::capture_promote_queen:
+        case move_type_t::capture_promote_rook:
+        case move_type_t::capture_promote_bishop:
+        case move_type_t::capture_promote_knight:
+            // Promotion piece is encoded by `type`'s bucket; tiebreak on
+            // the captured piece (MVV).
+            score += piece_kind(capturing_pc);
+            break;
+
+        default:
+            break;
+    }
+
+    return score;
+}
+
+auto MoveGen::at(size_t idx) -> Move & { return m_movs[idx].move; }
+
+auto MoveGen::at(size_t idx) const -> const Move & { return m_movs[idx].move; }
 
 template <side_t Side>
 void MoveGen::gen()
@@ -470,7 +523,11 @@ void MoveGen::gen()
     get_king_moves<Side>();
 
     m_end_idx = static_cast<ptrdiff_t>(m_idx);
-    // sort(m_movs.begin(), m_movs.begin() + m_end_idx, MoveGen::compare_moves);
+    std::sort(m_movs.begin(), m_movs.begin() + m_end_idx,
+              [](const scored_move &move_a, const scored_move &move_b) -> bool
+              {
+                  return move_a.score > move_b.score;  // descending: best score first
+              });
 }
 
 MoveGen::MoveGen(const BitBoard &board) : m_board(board) {}
@@ -484,8 +541,8 @@ template bool MoveGen::is_king_in_check<side_t::black>() const;
 template uint64_t MoveGen::get_attackers<side_t::white>();
 template uint64_t MoveGen::get_attackers<side_t::black>();
 
-template void MoveGen::add_to_movs<side_t::white>(uint64_t, uint64_t);
-template void MoveGen::add_to_movs<side_t::black>(uint64_t, uint64_t);
+template void MoveGen::add_to_movs<side_t::white>(piece_t, uint64_t, uint64_t);
+template void MoveGen::add_to_movs<side_t::black>(piece_t, uint64_t, uint64_t);
 
 template uint64_t MoveGen::get_rook_attacks<side_t::white>(uint64_t) const;
 template uint64_t MoveGen::get_rook_attacks<side_t::black>(uint64_t) const;
