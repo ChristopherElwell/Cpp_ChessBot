@@ -94,7 +94,7 @@ auto Engine::move_to_uci(const Move& move) -> string
     }
 }
 
-auto Engine::move_to_algebraic(const Move& move, BitBoard& board) -> string
+auto Engine::move_to_algebraic(const Move& move, BitBoard board) -> string
 {
     const string_view from_sq = square_coords.at(move.from());
     const string_view to_sq = square_coords.at(move.to());
