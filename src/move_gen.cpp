@@ -530,10 +530,37 @@ void MoveGen::gen()
               });
 }
 
+template <side_t Side>
+void MoveGen::gen(Move best_move)
+{
+    get_pawn_moves<Side>();
+    get_knight_moves<Side>();
+    get_bishop_moves<Side>();
+    get_rook_moves<Side>();
+    get_queen_moves<Side>();
+    get_king_moves<Side>();
+
+    m_end_idx = static_cast<ptrdiff_t>(m_idx);
+    std::sort(m_movs.begin(), m_movs.begin() + m_end_idx,
+              [best_move](const scored_move &move_a, const scored_move &move_b) -> bool
+              {
+                  const bool a_is_best = move_a.move == best_move;
+                  const bool b_is_best = move_b.move == best_move;
+
+                  if (a_is_best != b_is_best)
+                  {
+                      return a_is_best;
+                  }
+                  return move_a.score > move_b.score;  // descending: best score first
+              });
+}
 MoveGen::MoveGen(const BitBoard &board) : m_board(board) {}
 
 template void MoveGen::gen<side_t::white>();
 template void MoveGen::gen<side_t::black>();
+
+template void MoveGen::gen<side_t::white>(Move best_move);
+template void MoveGen::gen<side_t::black>(Move best_move);
 
 template bool MoveGen::is_king_in_check<side_t::white>() const;
 template bool MoveGen::is_king_in_check<side_t::black>() const;

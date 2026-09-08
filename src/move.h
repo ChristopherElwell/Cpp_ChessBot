@@ -59,6 +59,7 @@ public:
     Move(Move &&) = default;
     auto operator=(Move &&) -> Move & = default;
     auto operator=(const Move &) -> Move & = default;
+    auto operator==(Move other) const -> bool;
 
     Move(int sq_from = 0, int sq_to = 0, move_type_t type = move_type_t::moves_termination);
     Move(uint64_t sq_from, uint64_t sq_to, move_type_t type = move_type_t::moves_termination);

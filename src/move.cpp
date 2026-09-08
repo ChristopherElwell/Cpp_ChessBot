@@ -13,7 +13,8 @@ using namespace std;
 
 Move::Move(int sq_from, int sq_to, move_type_t type)
     : m_mask((sq_from << from_shift) | (sq_to << to_shift) | static_cast<uint16_t>(type))
-{}
+{
+}
 
 Move::Move(uint64_t sq_from, uint64_t sq_to, move_type_t type)
     : m_mask((countr_zero(sq_from) << from_shift) | (countr_zero(sq_to) << to_shift) |
@@ -28,4 +29,5 @@ auto Move::from() const -> int { return (m_mask >> from_shift) & from_mask; }
 
 auto Move::to() const -> int { return (m_mask >> to_shift) & to_mask; }
 
+auto Move::operator==(Move other) const -> bool { return m_mask == other.m_mask; }
 // NOLINTEND(bugprone-easily-swappable-parameters)

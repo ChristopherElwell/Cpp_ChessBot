@@ -1,3 +1,5 @@
+#include "search.h"
+
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -17,6 +19,7 @@
 #include "eval.h"
 #include "move.h"
 #include "move_gen.h"
+#include "ttable.h"
 #include "window.h"
 
 using namespace std;
@@ -25,9 +28,9 @@ namespace
 {
 // primary template declaration
 template <side_t Side>
-auto mate_eval(const MoveGen& move_gen, int ply) noexcept -> int;
+auto mate_eval(const MoveGen& move_gen, int8_t ply) noexcept -> int16_t;
 
-constexpr int max_quiescence_depth = 5;
+constexpr int8_t max_quiescence_depth = 5;
 }  // namespace
 
 auto Engine::run(int depth) -> future<void>
@@ -106,17 +109,17 @@ template <side_t Side>
 void Engine::search_async()
 {
     const lock_guard<std::mutex> lock(m_search_lock);
-    int depth_completed = 0;
+    int8_t depth_completed = 0;
     PVTable pv_completed = {};
-    auto state =
-        search_state{.board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history};
+    auto state = search_state{
+        .board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history, .tt = {}};
     int eval_completed = 0;
     AspirationWindow window;
     while (!state.b_stop->load(memory_order_relaxed))
     {
         const auto [depth, alpha, beta] = window.next_window();
-        const int eval = search<Side>(
-            search_args{.depth = depth, .alpha = alpha, .beta = beta, .ply = 0}, state);
+        const int16_t eval = search<Side>(
+            search_args{.depth = depth, .ply = 0, .alpha = alpha, .beta = beta}, state);
         const bool b_eval_in_window = window.report_result(eval);
 
         if (!state.b_stop->load(memory_order_relaxed) && b_eval_in_window)
@@ -143,14 +146,14 @@ template <side_t Side>
 void Engine::search_async(int depth)
 {
     const lock_guard<std::mutex> lock(m_search_lock);
-    auto state =
-        search_state{.board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history};
+    auto state = search_state{
+        .board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history, .tt = {}};
 
     // No use of this eval
-    search<Side>(search_args{.depth = depth,
+    search<Side>(search_args{.depth = static_cast<int8_t>(depth),
+                             .ply = 0,
                              .alpha = AspirationWindow::alpha_init,
-                             .beta = AspirationWindow::beta_init,
-                             .ply = 0},
+                             .beta = AspirationWindow::beta_init},
                  state);
 
     // stop being true on a depth search means it was interrupted, discard result
@@ -174,30 +177,50 @@ void Engine::search_async(int depth)
 }
 
 template <side_t Side>
-auto Engine::search(search_args args, search_state& state) -> int
+auto Engine::search(search_args args, search_state& state) -> int16_t
 {
-    auto [depth, alpha, beta, ply] = args;
-    auto& [board, b_stop, pv, history] = state;
+    auto& [board, b_stop, pv, history, tt] = state;
+    const int16_t original_alpha = args.alpha;
     // instantly stop searching and cleanup
     if (b_stop->load(memory_order_relaxed))
     {
         return 0;
     }
 
-    pv.clear(ply);
+    pv.clear(args.ply);
+
+    const auto probe = tt.probe(board.hash().get(), args);
+    if (probe.result == tt_probe_result::eval)
+    {
+        int16_t eval = probe.node->eval;
+        if (is_mate_eval(eval))
+        {
+            eval += (eval > 0) ? static_cast<int16_t>(-args.ply) : static_cast<int16_t>(args.ply);
+        }
+        return eval;
+    }
 
     // if end of iteration, return evaluation of board
-    if (depth == 0)
+    if (args.depth == 0)
     {
         return quiescence<Side>(args, state);
     }
 
     Move best_move = {};
     bool b_found_a_move = false;
-    int best_eval = numeric_limits<int>::min();
+    int16_t best_eval = numeric_limits<int16_t>::min();
 
     auto move_gen = MoveGen(board);
-    move_gen.gen<Side>();
+
+    if (probe.result == tt_probe_result::move)
+    {
+        move_gen.gen<Side>(probe.node->best_move);
+    }
+    else
+    {
+        move_gen.gen<Side>();
+    }
+
     for (const auto& move : move_gen)
     {
         const bool b_is_irreversible =
@@ -210,7 +233,7 @@ auto Engine::search(search_args args, search_state& state) -> int
             board.undo_move<Side>(move, inverse);
             continue;
         }
-        int eval = 0;
+        int16_t eval = 0;
         if (history.is_threefold(board.hash()))
         {
             // draw
@@ -226,9 +249,7 @@ auto Engine::search(search_args args, search_state& state) -> int
             {
                 history.push_back(board.hash());
             }
-            eval = -search<~Side>(
-                search_args{.depth = depth - 1, .alpha = -beta, .beta = -alpha, .ply = ply + 1},
-                state);
+            eval = -search<~Side>(args.next(), state);
             history.pop_back();
         }
 
@@ -239,10 +260,10 @@ auto Engine::search(search_args args, search_state& state) -> int
             best_eval = eval;
             best_move = move;
             b_found_a_move = true;
-            pv.update(ply, best_move);
+            pv.update(args.ply, best_move);
         }
-        alpha = max(alpha, best_eval);
-        if (alpha >= beta)
+        args.alpha = max(args.alpha, best_eval);
+        if (args.alpha >= args.beta)
         {
             break;
         }
@@ -251,51 +272,77 @@ auto Engine::search(search_args args, search_state& state) -> int
     // If no moves, must be either stalemate or checkmate
     if (!b_found_a_move)
     {
-        return mate_eval<Side>(move_gen, ply);
+        best_eval = mate_eval<Side>(move_gen, args.ply);
     }
+
+    tt.store(tt_node{.key = board.hash().get(),
+                     .best_move = best_move,
+                     .eval = best_eval,
+                     .depth = args.depth,
+                     .flag = {}},
+             original_alpha, args.beta, args.ply);
 
     return best_eval;
 }
 
 template <side_t Side>
-auto Engine::quiescence(search_args args, search_state& state) -> int
+auto Engine::quiescence(search_args args, search_state& state) -> int16_t
 {
-    auto [depth, alpha, beta, ply] = args;
-    auto& [board, b_stop, pv, history] = state;
+    auto& [board, b_stop, pv, history, tt] = state;
+    const int16_t original_alpha = args.alpha;
     // instantly stop searching and cleanup
     if (b_stop->load(memory_order_relaxed))
     {
         return 0;
     }
 
-    pv.clear(ply);
+    pv.clear(args.ply);
+
+    const auto probe = tt.probe(board.hash().get(), args);
+    if (probe.result == tt_probe_result::eval)
+    {
+        int16_t eval = probe.node->eval;
+        if (is_mate_eval(eval))
+        {
+            eval += (eval > 0) ? static_cast<int16_t>(-args.ply) : static_cast<int16_t>(args.ply);
+        }
+        return eval;
+    }
+
     auto move_gen = MoveGen(board);
     const bool b_moving_side_in_check = move_gen.is_king_in_check<Side>();
 
+    int16_t best_eval = numeric_limits<int16_t>::min();
     if (!b_moving_side_in_check)
     {
-        int stand_pat = evaluate<Side>(board);
-
+        int16_t stand_pat = evaluate<Side>(board);
         // max quiescence depth
-        if (depth < -max_quiescence_depth)
+        if (args.depth < -max_quiescence_depth)
         {
             return stand_pat;
         }
 
         // If stand pat better then beta, this line will
         // never be reached anyways
-        if (stand_pat >= beta)
+        if (stand_pat >= args.beta)
         {
             return stand_pat;
         }
-        alpha = max(alpha, stand_pat);
+        best_eval = stand_pat;
+        args.alpha = max(args.alpha, stand_pat);
     }
 
     Move best_move = {};
     bool b_found_a_move = false;
-    int best_eval = numeric_limits<int>::min();
 
-    move_gen.gen<Side>();
+    if (probe.result == tt_probe_result::move)
+    {
+        move_gen.gen<Side>(probe.node->best_move);
+    }
+    else
+    {
+        move_gen.gen<Side>();
+    }
 
     for (const auto& move : move_gen)
     {
@@ -317,7 +364,7 @@ auto Engine::quiescence(search_args args, search_state& state) -> int
             board.undo_move<Side>(move, inverse);
             continue;
         }
-        int eval = 0;
+        int16_t eval = 0;
         if (history.is_threefold(board.hash()))
         {
             // draw
@@ -333,9 +380,7 @@ auto Engine::quiescence(search_args args, search_state& state) -> int
             {
                 history.push_back(board.hash());
             }
-            eval = -quiescence<~Side>(
-                search_args{.depth = depth - 1, .alpha = -beta, .beta = -alpha, .ply = ply + 1},
-                state);
+            eval = -quiescence<~Side>(args.next(), state);
             history.pop_back();
         }
 
@@ -346,10 +391,10 @@ auto Engine::quiescence(search_args args, search_state& state) -> int
             best_eval = eval;
             best_move = move;
             b_found_a_move = true;
-            pv.update(ply, best_move);
+            pv.update(args.ply, best_move);
         }
-        alpha = max(alpha, best_eval);
-        if (alpha >= beta)
+        args.alpha = max(args.alpha, best_eval);
+        if (args.alpha >= args.beta)
         {
             break;
         }
@@ -358,13 +403,20 @@ auto Engine::quiescence(search_args args, search_state& state) -> int
     // If no moves and in check, must be either stalemate or checkmate
     if (!b_found_a_move && b_moving_side_in_check)
     {
-        return mate_eval<Side>(move_gen, ply);
+        best_eval = mate_eval<Side>(move_gen, args.ply);
     }
     // If no moves but not in check, then position is terminal for quiescence
-    if (!b_found_a_move && !b_moving_side_in_check)
+    else if (!b_found_a_move && !b_moving_side_in_check)
     {
-        return evaluate<Side>(board);
+        best_eval = evaluate<Side>(board);
     }
+
+    tt.store(tt_node{.key = board.hash().get(),
+                     .best_move = best_move,
+                     .eval = best_eval,
+                     .depth = args.depth,
+                     .flag = {}},
+             original_alpha, args.beta, args.ply);
 
     return best_eval;
 }
@@ -373,19 +425,18 @@ template void Engine::search_async<side_t::white>();
 template void Engine::search_async<side_t::black>();
 template void Engine::search_async<side_t::white>(int depth);
 template void Engine::search_async<side_t::black>(int depth);
-template auto Engine::search<side_t::white>(search_args args, search_state& state) -> int;
-template auto Engine::search<side_t::black>(search_args args, search_state& state) -> int;
+template auto Engine::search<side_t::white>(search_args args, search_state& state) -> int16_t;
+template auto Engine::search<side_t::black>(search_args args, search_state& state) -> int16_t;
 
 namespace
 {
-
 // primary template declaration
 template <side_t Side>
-auto mate_eval(const MoveGen& move_gen, int ply) noexcept -> int
+auto mate_eval(const MoveGen& move_gen, int8_t ply) noexcept -> int16_t
 {
     if (move_gen.is_king_in_check<Side>())
     {
-        return ply - checkmate_eval;
+        return static_cast<int16_t>(ply) - checkmate_eval;
     }
     return 0;  // stalemate
 }

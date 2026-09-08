@@ -28,7 +28,8 @@ auto main(int argc, char* argv[]) -> int
         if (argc < 4)
         {
             std::cerr << "--divide requires a FEN and a depth, e.g.\n"
-                      << "  chess --divide \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\" 3\n";
+                      << "  chess --divide \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - "
+                         "0 1\" 3\n";
             return EXIT_FAILURE;
         }
         const std::string fen = argv[2];
@@ -55,7 +56,8 @@ auto main(int argc, char* argv[]) -> int
         if (argc < 4)
         {
             std::cerr << "--verify requires a FEN and a depth, e.g.\n"
-                      << "  chess --verify \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\" 3\n";
+                      << "  chess --verify \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - "
+                         "0 1\" 3\n";
             return EXIT_FAILURE;
         }
         const std::string fen = argv[2];
@@ -92,6 +94,9 @@ auto main(int argc, char* argv[]) -> int
                 break;
             case mode_t::conversion:
                 test_move_conversion();
+                break;
+            case mode_t::ttable:
+                test_ttable();
                 break;
             case mode_t::history:
                 test_board_history();
@@ -161,29 +166,35 @@ auto parse_arguments(int argc, span<char* const> argv) -> vector<task_t>
         {
             args.push_back(task_t{.mode = mode_t::uci});
         }
+        else if (arg == "--ttable")
+        {
+            args.push_back(task_t{.mode = mode_t::ttable});
+        }
         else if (arg == "--help" || arg == "-h")
         {
-            std::cout << "Usage:\n"
-                      << "  chess                            Run UCI mode\n"
-                      << "  chess --uci                      Run UCI mode\n"
-                      << "  chess --puzzles N                Run N puzzles\n"
-                      << "  chess --perft N                  Run perft to depth N\n"
-                      << "  chess --conversion               Run the move conversion test\n"
-                      << "  chess --divide FEN DEPTH         Show per-move perft counts (\"divide\") at\n"
-                      << "                                    FEN/DEPTH, for debugging move gen. See\n"
-                      << "                                    perft_debug.py.\n"
-                      << "  chess --checkmove FEN UCI        Compare incremental vs fresh-parsed\n"
-                      << "                                    state after applying UCI to FEN, to\n"
-                      << "                                    catch apply_move state-sync bugs.\n"
-                      << "  chess --verify FEN DEPTH         Walk the perft tree from FEN to DEPTH,\n"
-                      << "                                    checking every apply/undo round trip\n"
-                      << "                                    restores the board exactly. Reports\n"
-                      << "                                    the exact move path to the first bad\n"
-                      << "                                    undo, if any.\n"
-                      << "  chess --help                     Show this help\n"
-                      << "\n"
-                      << "Flags can be combined to run multiple tests in one invocation, e.g.:\n"
-                      << "  chess --conversion --perft 5\n";
+            std::cout
+                << "Usage:\n"
+                << "  chess                            Run UCI mode\n"
+                << "  chess --uci                      Run UCI mode\n"
+                << "  chess --puzzles N                Run N puzzles\n"
+                << "  chess --perft N                  Run perft to depth N\n"
+                << "  chess --conversion               Run the move conversion test\n"
+                << "  chess --ttable                   Run the move tranposition table test\n"
+                << "  chess --divide FEN DEPTH         Show per-move perft counts (\"divide\") at\n"
+                << "                                    FEN/DEPTH, for debugging move gen. See\n"
+                << "                                    perft_debug.py.\n"
+                << "  chess --checkmove FEN UCI        Compare incremental vs fresh-parsed\n"
+                << "                                    state after applying UCI to FEN, to\n"
+                << "                                    catch apply_move state-sync bugs.\n"
+                << "  chess --verify FEN DEPTH         Walk the perft tree from FEN to DEPTH,\n"
+                << "                                    checking every apply/undo round trip\n"
+                << "                                    restores the board exactly. Reports\n"
+                << "                                    the exact move path to the first bad\n"
+                << "                                    undo, if any.\n"
+                << "  chess --help                     Show this help\n"
+                << "\n"
+                << "Flags can be combined to run multiple tests in one invocation, e.g.:\n"
+                << "  chess --conversion --perft 5\n";
             std::exit(EXIT_SUCCESS);
         }
         else

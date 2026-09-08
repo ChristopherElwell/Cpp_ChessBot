@@ -5,6 +5,8 @@
 
 #include "engine.h"
 
+using namespace std;
+
 auto AspirationWindow::next_window() -> search_window
 {
     return search_window{.depth = m_depth, .alpha = m_alpha, .beta = m_beta};
@@ -28,8 +30,7 @@ auto AspirationWindow::report_result(int eval) -> bool
         }
         else
         {
-            m_beta =
-                std::max(m_last_successful_eval + margin + (failure_growth << m_fail_high_counter),
+            m_beta = max(m_last_successful_eval + margin + (failure_growth << m_fail_high_counter),
                          eval + margin);
         }
         m_fail_high_counter++;
@@ -45,9 +46,8 @@ auto AspirationWindow::report_result(int eval) -> bool
         }
         else
         {
-            m_alpha =
-                std::min(m_last_successful_eval - margin - (failure_growth << m_fail_low_counter),
-                         eval - margin);
+            m_alpha = min(m_last_successful_eval - margin - (failure_growth << m_fail_low_counter),
+                          eval - margin);
         }
         m_fail_low_counter++;
         return false;

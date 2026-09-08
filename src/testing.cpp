@@ -397,6 +397,243 @@ void test_move_conversion()
         static_cast<float>(success) / static_cast<float>(total) * 100, uci_failures, fen_failures);
 }
 
+void test_ttable()
+{
+    println("Running TTable test...");
+
+    TTable tt{4};
+
+    int total = 0;
+    int success = 0;
+
+    auto check = [&](bool condition, const string &name)
+    {
+        total++;
+
+        if (condition)
+        {
+            success++;
+            return;
+        }
+
+        println("TTable test failed: {}", name);
+    };
+
+    const BitBoard board = BitBoard::start_position();
+    const uint64_t key = board.hash().get();
+
+    search_args args{
+        .depth = 5,
+        .ply = 0,
+        .alpha = -100,
+        .beta = 100,
+    };
+
+    // --------------------------------
+    // 1. Empty table should miss
+    // --------------------------------
+    {
+        const auto result = tt.probe(key, args);
+
+        check(result.node == nullptr, "empty table returns nullptr");
+        check(result.result == tt_probe_result::miss, "empty table returns miss");
+    }
+
+    // --------------------------------
+    // 2. Store an exact entry
+    // --------------------------------
+    {
+        const Move move{};
+
+        tt.store(
+            tt_node{
+                .key = key,
+                .best_move = move,
+                .eval = 25,
+                .depth = 5,
+            },
+            args.alpha, args.beta, 0);
+
+        const auto result = tt.probe(key, args);
+
+        check(result.node != nullptr, "stored entry can be probed");
+        check(result.result == tt_probe_result::eval, "exact entry returns eval");
+        check(result.node->key == key, "stored key matches");
+        check(result.node->eval == 25, "stored eval matches");
+        check(result.node->depth == 5, "stored depth matches");
+        check(result.node->flag == tt_node_flag::exact, "entry is marked exact");
+    }
+
+    // --------------------------------
+    // 3. Shallower entry should provide
+    //    move but not eval
+    // --------------------------------
+    {
+        search_args deeper_args{
+            .depth = 6,
+            .ply = 0,
+            .alpha = -100,
+            .beta = 100,
+        };
+
+        const auto result = tt.probe(key, deeper_args);
+
+        check(result.node != nullptr, "shallower entry still returns node");
+        check(result.result == tt_probe_result::move, "shallower entry returns move");
+    }
+
+    // --------------------------------
+    // 4. Exact entry at sufficient depth
+    // --------------------------------
+    {
+        search_args same_depth{
+            .depth = 5,
+            .ply = 0,
+            .alpha = -100,
+            .beta = 100,
+        };
+
+        const auto result = tt.probe(key, same_depth);
+
+        check(result.result == tt_probe_result::eval, "entry at required depth returns eval");
+        check(result.node->eval == 25, "exact eval is preserved");
+    }
+
+    // --------------------------------
+    // 5. Bound that does not cause
+    //    a cutoff should only provide move
+    // --------------------------------
+    {
+        tt.store(
+            tt_node{
+                .key = key,
+                .best_move = {},
+                .eval = 50,
+                .depth = 5,
+            },
+            0, 100, 0);
+
+        const auto result = tt.probe(key, args);
+
+        // 0 < 50 < 100, therefore exact.
+        check(result.result == tt_probe_result::eval,
+              "score inside alpha-beta window returns eval");
+        check(result.node->flag == tt_node_flag::exact, "score inside window is exact");
+    }
+
+    // --------------------------------
+    // 6. Fail-high should be lower bound
+    // --------------------------------
+    {
+        tt.store(
+            tt_node{
+                .key = key,
+                .best_move = {},
+                .eval = 150,
+                .depth = 5,
+            },
+            -100, 100, 0);
+
+        const auto result = tt.probe(key, args);
+
+        check(result.result == tt_probe_result::eval, "fail-high entry returns eval");
+        check(result.node->flag == tt_node_flag::lower_bound, "fail-high is lower bound");
+    }
+
+    // --------------------------------
+    // 7. Fail-low should be upper bound
+    // --------------------------------
+    {
+        tt.store(
+            tt_node{
+                .key = key,
+                .best_move = {},
+                .eval = -150,
+                .depth = 5,
+            },
+            -100, 100, 0);
+
+        const auto result = tt.probe(key, args);
+
+        check(result.result == tt_probe_result::eval, "fail-low entry returns eval");
+        check(result.node->flag == tt_node_flag::upper_bound, "fail-low is upper bound");
+    }
+
+    // --------------------------------
+    // 8. Same bound, but different window
+    //    should not necessarily give eval
+    // --------------------------------
+    {
+        search_args no_cutoff{
+            .depth = 5,
+            .ply = 0,
+            .alpha = -200,
+            .beta = 200,
+        };
+
+        const auto result = tt.probe(key, no_cutoff);
+
+        check(result.node != nullptr, "bound entry still returns node");
+        check(result.result == tt_probe_result::move, "bound that cannot cutoff returns move");
+    }
+
+    // --------------------------------
+    // 9. Shallower store must not replace
+    //    deeper entry
+    // --------------------------------
+    {
+        tt.store(
+            tt_node{
+                .key = key,
+                .best_move = {},
+                .eval = 999,
+                .depth = 3,
+            },
+            -100, 100, 0);
+
+        const auto result = tt.probe(key, args);
+
+        check(result.node->depth == 5, "shallower entry does not replace deeper entry");
+        check(result.node->eval == -150, "deeper entry eval is preserved");
+    }
+
+    // --------------------------------
+    // 10. Deeper store should replace
+    // --------------------------------
+    {
+        tt.store(
+            tt_node{
+                .key = key,
+                .best_move = {},
+                .eval = 75,
+                .depth = 7,
+            },
+            -100, 100, 0);
+
+        const auto result = tt.probe(key, args);
+
+        check(result.node->depth == 7, "deeper entry replaces old entry");
+        check(result.node->eval == 75, "deeper entry eval is stored");
+    }
+
+    // --------------------------------
+    // 11. clear() should invalidate entries
+    // --------------------------------
+    tt.clear();
+
+    {
+        const auto result = tt.probe(key, args);
+
+        check(result.node == nullptr, "clear removes stored entry");
+        check(result.result == tt_probe_result::miss, "clear causes probe miss");
+    }
+
+    println(
+        "TTable test complete\nPass rate: {:.0f}%\n"
+        "failures: {}\n",
+        static_cast<float>(success) / static_cast<float>(total) * 100, total - success);
+}
+
 void test_zobrist_hash()
 {
     println("Running Zobrist hashing test...");

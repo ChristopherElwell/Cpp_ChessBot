@@ -1,4 +1,6 @@
-#pragma once
+#ifndef ENGINE_H
+#define ENGINE_H
+
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -12,6 +14,8 @@
 #include "board_history.h"
 #include "move.h"
 #include "pv.h"
+#include "search.h"
+#include "ttable.h"
 
 #ifdef DEBUG
 #define DEBUG_LOG(...) std::println(std::cerr, __VA_ARGS__)
@@ -26,6 +30,7 @@ enum class mode_t : uint8_t
     puzzles,
     perft,
     conversion,
+    ttable,
     history,
     zobrist,
 };
@@ -36,26 +41,13 @@ struct task_t
     int count = 0;  // used by puzzles / perft
 };
 
-struct result_t
-{
-    Move best_move;
-    std::unique_ptr<const result_t> next;
-};
-
-struct search_args
-{
-    int depth;
-    int alpha;
-    int beta;
-    int ply;
-};
-
 struct search_state
 {
     BitBoard board;
     std::atomic_bool *b_stop = nullptr;
     PVTable pv;
     BoardHistory history;
+    TTable tt;
 };
 
 class Engine
@@ -77,9 +69,9 @@ private:
     static constexpr auto max_search_time = std::chrono::minutes{5};
 
     template <side_t Side>
-    static auto search(search_args args, search_state &state) -> int;
+    static auto search(search_args args, search_state &state) -> int16_t;
     template <side_t Side>
-    static auto quiescence(search_args args, search_state &state) -> int;
+    static auto quiescence(search_args args, search_state &state) -> int16_t;
 
     template <side_t Side>
     void search_async();
@@ -118,3 +110,5 @@ public:
     auto get_algebraic() -> const std::string &;
     auto get_pv() -> const std::string &;
 };
+
+#endif

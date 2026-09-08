@@ -131,9 +131,9 @@ public:
         return (m_board[static_cast<int>(piece_t::info)] & turn_bit) != 0 ? side_t::white
                                                                           : side_t::black;
     }
-    auto hash() -> ZobristHash;
-    auto piece_at(int pos) const -> piece_t;
-    auto piece_at(uint64_t mask) const -> piece_t;
+    [[nodiscard]] auto hash() const -> ZobristHash;
+    [[nodiscard]] auto piece_at(int pos) const -> piece_t;
+    [[nodiscard]] auto piece_at(uint64_t mask) const -> piece_t;
 };
 
 #endif

@@ -113,6 +113,8 @@ public:
 
     template <side_t Side>
     void gen();
+    template <side_t Side>
+    void gen(Move best_move);
 
     MoveGen(const BitBoard &board);
 
