@@ -301,7 +301,7 @@ void test_puzzles(size_t count)
         const auto clock_start = chrono::steady_clock::now();
 
         engine.load(fen);
-        future<void> future = engine.run(chrono::seconds{1});
+        future<void> future = engine.run(chrono::seconds{5});
         future.get();
         const auto clock_end = chrono::high_resolution_clock::now();
         sum_time += chrono::duration_cast<chrono::milliseconds>(clock_end - clock_start);
@@ -312,7 +312,8 @@ void test_puzzles(size_t count)
         }
         else
         {
-            LOG("\nFAILED | Bot Move: [{}] Correct Move: [{}]\n", engine.get_algebraic(), answer);
+            LOG("\nFAILED \n{}\nBot Move: [{}] Correct Move: [{}]\nPV: {}\n", fen,
+                engine.get_algebraic(), answer, engine.get_pv());
         }
     }
     println("Puzzle test complete\nPass rate: {:.0f}%\nTime to complete: {}\n",

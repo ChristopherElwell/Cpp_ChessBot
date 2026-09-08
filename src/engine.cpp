@@ -43,17 +43,20 @@ auto Engine::get_uci() -> const string& { return m_uci; }
 
 auto Engine::get_algebraic() -> const string& { return m_algebraic; }
 
+auto Engine::get_pv() -> const string& { return m_pv_uci; }
+
 void Engine::load(const string& fen) { m_board = BitBoard(fen); }
 
 void Engine::convert_pv(const PVTable& pv_table)
 {
-    m_pv_uci.clear();
+    vector<string> pv_vec;
     BitBoard board = m_board;
     for (const auto& mov : pv_table.get_pv_at_ply(0))
     {
-        m_pv_uci.push_back(move_to_uci(mov));
+        pv_vec.push_back(move_to_uci(mov));
         board.apply_move(mov);
     }
+    m_pv_uci = pv_vec | views::join_with(' ') | ranges::to<string>();
 }
 
 auto Engine::move_to_uci(const Move& move) -> string
@@ -96,8 +99,8 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard& board) -> string
     const string_view from_sq = square_coords.at(move.from());
     const string_view to_sq = square_coords.at(move.to());
     const piece_t moving_pc = board.piece_at(move.from());
-    const char moving_symbol = piece_t_to_piece_symbol.at(moving_pc);
-
+    const char moving_symbol =
+        static_cast<char>(toupper(static_cast<uint8_t>(piece_t_to_piece_symbol.at(moving_pc))));
     string out;
     switch (move.type())
     {
@@ -175,6 +178,7 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard& board) -> string
         }
     }
     board.undo_move(move, inverse);
+    return out;
 }
 
 auto Engine::bitboard_to_string(const uint64_t& board) -> string

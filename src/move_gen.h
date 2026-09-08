@@ -42,6 +42,27 @@ struct scored_move
     Move move;
 };
 
+class move_iterator
+{
+public:
+    explicit move_iterator(const scored_move *ptr) : m_ptr(ptr) {}
+
+    auto operator*() const -> const Move & { return m_ptr->move; }
+    auto operator++() -> move_iterator &
+    {
+        ++m_ptr;
+        return *this;
+    }
+
+    friend auto operator!=(move_iterator lhs, move_iterator rhs) -> bool
+    {
+        return lhs.m_ptr != rhs.m_ptr;
+    }
+
+private:
+    const scored_move *m_ptr;
+};
+
 class MoveGen
 {
 private:
@@ -103,12 +124,9 @@ public:
     MoveGen(MoveGen &&) = delete;
     auto operator=(MoveGen &&other) -> MoveGen & = delete;
 
-    [[nodiscard]] auto begin() const
+    [[nodiscard]] auto begin() const -> move_iterator { return move_iterator(m_movs.data()); }
+    [[nodiscard]] auto end() const -> move_iterator
     {
-        return (m_movs | std::views::take(m_end_idx) | std::views::transform(to_move)).begin();
-    }
-    [[nodiscard]] auto end() const
-    {
-        return (m_movs | std::views::take(m_end_idx) | std::views::transform(to_move)).end();
+        return move_iterator(m_movs.data() + m_end_idx);
     }
 };

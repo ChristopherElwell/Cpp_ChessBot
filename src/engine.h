@@ -65,7 +65,7 @@ private:
     BoardHistory m_history = {};
     std::string m_uci;
     std::string m_algebraic;
-    std::vector<std::string> m_pv_uci;
+    std::string m_pv_uci;
     std::atomic_bool m_b_stop;
     std::chrono::steady_clock::time_point m_stop_time;
     std::thread m_search_thread;
@@ -78,6 +78,8 @@ private:
 
     template <side_t Side>
     static auto search(search_args args, search_state &state) -> int;
+    template <side_t Side>
+    static auto quiescence(search_args args, search_state &state) -> int;
 
     template <side_t Side>
     void search_async();
@@ -114,4 +116,5 @@ public:
 
     auto get_uci() -> const std::string &;
     auto get_algebraic() -> const std::string &;
+    auto get_pv() -> const std::string &;
 };

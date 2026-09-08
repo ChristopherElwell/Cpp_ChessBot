@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <future>
 #include <iostream>
@@ -11,6 +12,7 @@
 #include <utility>
 
 #include "bitboard.h"
+#include "bitboard_constants.h"
 #include "engine.h"
 #include "eval.h"
 #include "move.h"
@@ -24,6 +26,8 @@ namespace
 // primary template declaration
 template <side_t Side>
 auto mate_eval(const MoveGen& move_gen, int ply) noexcept -> int;
+
+constexpr int max_quiescence_depth = 5;
 }  // namespace
 
 auto Engine::run(int depth) -> future<void>
@@ -123,15 +127,16 @@ void Engine::search_async()
             DEBUG_LOG("Completed depth: {}", depth_completed);
         }
     }
+    convert_pv(pv_completed);
     m_uci = move_to_uci(pv_completed.best_move());
+    m_algebraic = move_to_algebraic(pv_completed.best_move());
+
     if (m_b_uci_mode)
     {
         LOG("{}, {}, {}, {}", depth_completed, m_uci, static_cast<float>(eval_completed) / 100.0F,
             Side == side_t::white ? "White" : "Black");
         println("bestmove {}", m_uci);
     }
-    m_algebraic = move_to_algebraic(state.pv.best_move());
-    convert_pv(pv_completed);
 }
 
 template <side_t Side>
@@ -160,7 +165,6 @@ void Engine::search_async(int depth)
     else
     {
         m_uci = move_to_uci(state.pv.best_move());
-        m_algebraic = move_to_algebraic(state.pv.best_move());
         convert_pv(state.pv);
         if (m_b_uci_mode)
         {
@@ -169,7 +173,6 @@ void Engine::search_async(int depth)
     }
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 template <side_t Side>
 auto Engine::search(search_args args, search_state& state) -> int
 {
@@ -186,7 +189,7 @@ auto Engine::search(search_args args, search_state& state) -> int
     // if end of iteration, return evaluation of board
     if (depth == 0)
     {
-        return evaluate<Side>(board);
+        return quiescence<Side>(args, state);
     }
 
     Move best_move = {};
@@ -197,6 +200,8 @@ auto Engine::search(search_args args, search_state& state) -> int
     move_gen.gen<Side>();
     for (const auto& move : move_gen)
     {
+        const bool b_is_irreversible =
+            board.piece_at(move.from()) == piece::pawn<Side> || (move.type() != move_type_t::quiet);
         const inv_move inverse = board.apply_move<Side>(move);
 
         // check if move leaves king in check
@@ -213,18 +218,18 @@ auto Engine::search(search_args args, search_state& state) -> int
         }
         else
         {
-            // if (move.is_irreversible())
-            // {
-            //     history.push_irreversible(board.hash());
-            // }
-            // else
-            // {
-            //     history.push_back(board.hash());
-            // }
+            if (b_is_irreversible)
+            {
+                history.push_irreversible(board.hash());
+            }
+            else
+            {
+                history.push_back(board.hash());
+            }
             eval = -search<~Side>(
                 search_args{.depth = depth - 1, .alpha = -beta, .beta = -alpha, .ply = ply + 1},
                 state);
-            // history.pop_back();
+            history.pop_back();
         }
 
         board.undo_move<Side>(move, inverse);
@@ -247,6 +252,118 @@ auto Engine::search(search_args args, search_state& state) -> int
     if (!b_found_a_move)
     {
         return mate_eval<Side>(move_gen, ply);
+    }
+
+    return best_eval;
+}
+
+template <side_t Side>
+auto Engine::quiescence(search_args args, search_state& state) -> int
+{
+    auto [depth, alpha, beta, ply] = args;
+    auto& [board, b_stop, pv, history] = state;
+    // instantly stop searching and cleanup
+    if (b_stop->load(memory_order_relaxed))
+    {
+        return 0;
+    }
+
+    pv.clear(ply);
+    auto move_gen = MoveGen(board);
+    const bool b_moving_side_in_check = move_gen.is_king_in_check<Side>();
+
+    if (!b_moving_side_in_check)
+    {
+        int stand_pat = evaluate<Side>(board);
+
+        // max quiescence depth
+        if (depth < -max_quiescence_depth)
+        {
+            return stand_pat;
+        }
+
+        // If stand pat better then beta, this line will
+        // never be reached anyways
+        if (stand_pat >= beta)
+        {
+            return stand_pat;
+        }
+        alpha = max(alpha, stand_pat);
+    }
+
+    Move best_move = {};
+    bool b_found_a_move = false;
+    int best_eval = numeric_limits<int>::min();
+
+    move_gen.gen<Side>();
+
+    for (const auto& move : move_gen)
+    {
+        const move_type_t type = move.type();
+        const bool b_is_interesting_move =
+            type != move_type_t::quiet && type != move_type_t::castle_kingside &&
+            type != move_type_t::castle_queenside && type != move_type_t::pawn_double;
+        if (!b_moving_side_in_check && !b_is_interesting_move)
+        {
+            continue;
+        }
+        const bool b_is_irreversible =
+            board.piece_at(move.from()) == piece::pawn<Side> || (move.type() != move_type_t::quiet);
+        const inv_move inverse = board.apply_move<Side>(move);
+
+        // check if move leaves king in check
+        if (move_gen.is_king_in_check<Side>())
+        {
+            board.undo_move<Side>(move, inverse);
+            continue;
+        }
+        int eval = 0;
+        if (history.is_threefold(board.hash()))
+        {
+            // draw
+            eval = 0;
+        }
+        else
+        {
+            if (b_is_irreversible)
+            {
+                history.push_irreversible(board.hash());
+            }
+            else
+            {
+                history.push_back(board.hash());
+            }
+            eval = -quiescence<~Side>(
+                search_args{.depth = depth - 1, .alpha = -beta, .beta = -alpha, .ply = ply + 1},
+                state);
+            history.pop_back();
+        }
+
+        board.undo_move<Side>(move, inverse);
+
+        if (eval > best_eval)
+        {
+            best_eval = eval;
+            best_move = move;
+            b_found_a_move = true;
+            pv.update(ply, best_move);
+        }
+        alpha = max(alpha, best_eval);
+        if (alpha >= beta)
+        {
+            break;
+        }
+    }
+
+    // If no moves and in check, must be either stalemate or checkmate
+    if (!b_found_a_move && b_moving_side_in_check)
+    {
+        return mate_eval<Side>(move_gen, ply);
+    }
+    // If no moves but not in check, then position is terminal for quiescence
+    if (!b_found_a_move && !b_moving_side_in_check)
+    {
+        return evaluate<Side>(board);
     }
 
     return best_eval;

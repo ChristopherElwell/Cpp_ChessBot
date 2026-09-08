@@ -232,6 +232,7 @@ auto BitBoard::apply_move(const Move& move) -> inv_move
     const uint64_t to_mask = 1ULL << move.to();
     const uint64_t mov_mask = from_mask | to_mask;
     const piece_t moving_pc = piece_at(from_mask);
+    assert(moving_pc != piece_t::none);
     const piece_t captured_pc = piece_at(to_mask);
 
     const auto inverse = inv_move{.moving_pc = moving_pc,
@@ -327,6 +328,7 @@ template <side_t Side>
 auto BitBoard::mask_move(move_type_t type, piece_t moving_pc, uint64_t from_mask, uint64_t to_mask,
                          piece_t captured_pc)
 {
+    assert(moving_pc != piece_t::none);
     const uint64_t mov_mask = from_mask | to_mask;
     switch (type)
     {
@@ -334,6 +336,7 @@ auto BitBoard::mask_move(move_type_t type, piece_t moving_pc, uint64_t from_mask
             apply_mask<Side>(moving_pc, mov_mask);
             break;
         case move_type_t::capture:
+            assert(captured_pc != piece_t::none);
             apply_mask<Side>(moving_pc, mov_mask);
             apply_mask<~Side>(captured_pc, to_mask);
             break;
@@ -363,13 +366,16 @@ auto BitBoard::mask_move(move_type_t type, piece_t moving_pc, uint64_t from_mask
         }
         case move_type_t::capture_promote_queen:
         {
+            assert(captured_pc != piece_t::none);
             apply_mask<Side>(moving_pc, from_mask);
             apply_mask<~Side>(captured_pc, to_mask);
             apply_mask<Side>(piece::queen<Side>, to_mask);
             break;
         }
+            assert(captured_pc != piece_t::none);
         case move_type_t::capture_promote_rook:
         {
+            assert(captured_pc != piece_t::none);
             apply_mask<Side>(moving_pc, from_mask);
             apply_mask<~Side>(captured_pc, to_mask);
             apply_mask<Side>(piece::rook<Side>, to_mask);
@@ -377,6 +383,7 @@ auto BitBoard::mask_move(move_type_t type, piece_t moving_pc, uint64_t from_mask
         }
         case move_type_t::capture_promote_bishop:
         {
+            assert(captured_pc != piece_t::none);
             apply_mask<Side>(moving_pc, from_mask);
             apply_mask<~Side>(captured_pc, to_mask);
             apply_mask<Side>(piece::bishop<Side>, to_mask);
@@ -384,6 +391,7 @@ auto BitBoard::mask_move(move_type_t type, piece_t moving_pc, uint64_t from_mask
         }
         case move_type_t::capture_promote_knight:
         {
+            assert(captured_pc != piece_t::none);
             apply_mask<Side>(moving_pc, from_mask);
             apply_mask<~Side>(captured_pc, to_mask);
             apply_mask<Side>(piece::knight<Side>, to_mask);
