@@ -40,7 +40,8 @@ const array<pair<string, array<uint64_t, 6>>, 6> perft_tests = {
     make_pair("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 "
               "10 ",
               array<uint64_t, 6>{46, 2079, 89890, 3894594, 164075551, 6923051137})};
-auto read_csv(const filesystem::path &filename) -> vector<vector<string>>;
+auto read_csv(const filesystem::path &filename, size_t lines = numeric_limits<size_t>::max())
+    -> vector<vector<string>>;
 }  // namespace
 
 template <side_t Side>
@@ -283,7 +284,7 @@ void run_perft_verify(const string &fen, int depth)
 void test_puzzles(size_t count)
 {
     println("Running puzzle test. {} puzzles...", count);
-    const vector<vector<string>> pzls = read_csv(priv::win_at_chess_path);
+    const vector<vector<string>> pzls = read_csv(priv::puzzles_path, count);
     size_t idx = 0;
     int passed = 0;
     Engine engine;
@@ -291,8 +292,14 @@ void test_puzzles(size_t count)
     chrono::milliseconds sum_time = {};
     for (auto pzl : pzls)
     {
-        const string &fen = pzl[0];
-        const string &answer = pzl[1];
+        string &fen = pzl[1];
+        const string &pv = pzl[2];
+        istringstream iss(pv);
+        string answer_uci;
+        string first_move_uci;
+        iss >> first_move_uci;
+        iss >> answer_uci;
+
         if (idx++ >= count)
         {
             break;
@@ -300,20 +307,35 @@ void test_puzzles(size_t count)
 
         const auto clock_start = chrono::steady_clock::now();
 
-        engine.load(fen);
-        future<void> future = engine.run(chrono::seconds{5});
+        BitBoard board = BitBoard::start_position();
+        try
+        {
+            board = BitBoard{fen};
+        }
+        catch (invalid_argument &e)
+        {
+            println("{}", e.what());
+            continue;
+        }
+        Engine engine;
+        Move first_move = Engine::uci_to_move(first_move_uci, board);
+        board.apply_move(first_move);
+        fen = board.to_fen();
+
+        engine.load(board);
+        future<void> future = engine.run(chrono::seconds{1});
         future.get();
         const auto clock_end = chrono::high_resolution_clock::now();
         sum_time += chrono::duration_cast<chrono::milliseconds>(clock_end - clock_start);
 
-        if (engine.get_algebraic() == answer)
+        if (engine.get_uci() == answer_uci)
         {
             passed++;
         }
         else
         {
-            LOG("\nFAILED \n{}\nBot Move: [{}] Correct Move: [{}]\nPV: {}\n", fen,
-                engine.get_algebraic(), answer, engine.get_pv());
+            LOG("\nFAILED \n{}\nBot Move: [{}] Correct Move: [{}]\nPV: {}\n", fen, engine.get_uci(),
+                answer_uci, engine.get_pv());
         }
     }
     println("Puzzle test complete\nPass rate: {:.0f}%\nTime to complete: {}\n",
@@ -328,6 +350,10 @@ void test_move_conversion()
     {
         println("CSV move conversion test: no rows read from [{}]", priv::test_games_path.string());
         return;
+    }
+    else
+    {
+        println("CSV opened");
     }
 
     int total = 0;
@@ -374,6 +400,10 @@ void test_move_conversion()
             b_success = false;
             uci_failures++;
         }
+        else
+        {
+            print(".");
+        }
 
         this_board.apply_move(mov);
 
@@ -401,7 +431,8 @@ void test_ttable()
 {
     println("Running TTable test...");
 
-    TTable tt{4};
+    TTable tt;
+    tt.set_size(4);
 
     int total = 0;
     int success = 0;
@@ -817,7 +848,7 @@ void test_board_history()
 
 namespace
 {
-auto read_csv(const filesystem::path &filename) -> vector<vector<string>>
+auto read_csv(const filesystem::path &filename, size_t lines) -> vector<vector<string>>
 {
     vector<vector<string>> result;
     ifstream file(filename);
@@ -833,7 +864,8 @@ auto read_csv(const filesystem::path &filename) -> vector<vector<string>>
     }
 
     string line;
-    while (getline(file, line))
+    int counter = 0;
+    while (getline(file, line) && counter < lines)
     {
         vector<string> row;
         stringstream stream(line);
@@ -845,6 +877,7 @@ auto read_csv(const filesystem::path &filename) -> vector<vector<string>>
         }
 
         result.push_back(row);
+        counter++;
     }
 
     return result;

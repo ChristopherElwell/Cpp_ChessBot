@@ -111,16 +111,23 @@ void Engine::search_async()
     const lock_guard<std::mutex> lock(m_search_lock);
     int8_t depth_completed = 0;
     PVTable pv_completed = {};
+    if (m_tt.size() == 0)
+    {
+        m_tt.set_size();
+    }
     auto state = search_state{
-        .board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history, .tt = {}};
+        .board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history, .tt = m_tt};
     int eval_completed = 0;
     AspirationWindow window;
+    uint64_t hash = m_board.hash().get();
     while (!state.b_stop->load(memory_order_relaxed))
     {
+        assert(hash == m_board.hash().get());
         const auto [depth, alpha, beta] = window.next_window();
         const int16_t eval = search<Side>(
             search_args{.depth = depth, .ply = 0, .alpha = alpha, .beta = beta}, state);
         const bool b_eval_in_window = window.report_result(eval);
+        assert(hash == m_board.hash().get());
 
         if (!state.b_stop->load(memory_order_relaxed) && b_eval_in_window)
         {
@@ -130,9 +137,13 @@ void Engine::search_async()
             DEBUG_LOG("Completed depth: {}", depth_completed);
         }
     }
+    assert(hash == m_board.hash().get());
     convert_pv(pv_completed);
+    assert(hash == m_board.hash().get());
     m_uci = move_to_uci(pv_completed.best_move());
+    assert(hash == m_board.hash().get());
     m_algebraic = move_to_algebraic(pv_completed.best_move());
+    assert(hash == m_board.hash().get());
 
     if (m_b_uci_mode)
     {
@@ -146,8 +157,12 @@ template <side_t Side>
 void Engine::search_async(int depth)
 {
     const lock_guard<std::mutex> lock(m_search_lock);
+    if (m_tt.size() == 0)
+    {
+        m_tt.set_size();
+    }
     auto state = search_state{
-        .board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history, .tt = {}};
+        .board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history, .tt = m_tt};
 
     // No use of this eval
     search<Side>(search_args{.depth = static_cast<int8_t>(depth),

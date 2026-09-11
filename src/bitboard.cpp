@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdint>
 #include <format>
+#include <print>
 #include <string>
 #include <unordered_map>
 
@@ -61,8 +62,9 @@ BitBoard::BitBoard(const string& fen)
                 break;
             case '/':
             case ' ':
-            default:
                 break;
+            default:
+                throw std::invalid_argument("invalid FEN string: " + fen);
         }
         if (piece == ' ')
         {

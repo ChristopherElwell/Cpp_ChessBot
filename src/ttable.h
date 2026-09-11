@@ -41,14 +41,14 @@ class TTable
 {
 private:
     std::vector<tt_node> m_table;
-    uint64_t m_mask;
-    size_t m_size;
+    uint64_t m_mask = 0;
+    size_t m_size = 0;
     static constexpr size_t default_size_pow2 = 22;
     static constexpr size_t default_size = 1 << default_size_pow2;
 
 public:
-    TTable(size_t size = default_size);
-
+    void set_size(size_t size = default_size);
+    auto size() -> size_t;
     [[nodiscard]] auto probe(uint64_t key, const search_args& args) -> tt_result;
     void store(tt_node node, int16_t alpha, int16_t beta, int8_t ply);
     void clear();

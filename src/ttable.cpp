@@ -67,9 +67,14 @@ void TTable::store(tt_node node, int16_t alpha, int16_t beta, int8_t ply)
     old_node = node;
 }
 
-TTable::TTable(size_t size) : m_table(size), m_mask(size - 1), m_size(size)
+void TTable::set_size(size_t size)
 {
     assert(popcount(size) == 1);
+    m_table = vector<tt_node>(size);
+    m_mask = size - 1;
+    m_size = size;
 }
 
 void TTable::clear() { std::ranges::fill(m_table, tt_node{}); }
+
+auto TTable::size() -> size_t { return m_size; }

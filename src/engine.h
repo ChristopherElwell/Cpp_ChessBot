@@ -55,6 +55,7 @@ class Engine
 private:
     BitBoard m_board = BitBoard::start_position();
     BoardHistory m_history = {};
+    TTable m_tt;
     std::string m_uci;
     std::string m_algebraic;
     std::string m_pv_uci;
@@ -105,6 +106,7 @@ public:
     auto run(std::chrono::milliseconds duration = max_search_time) -> std::future<void>;
     auto run(int depth) -> std::future<void>;
     void load(const std::string &fen);
+    void load(const BitBoard &board);
 
     auto get_uci() -> const std::string &;
     auto get_algebraic() -> const std::string &;

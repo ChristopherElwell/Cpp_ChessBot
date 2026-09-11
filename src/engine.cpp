@@ -47,6 +47,8 @@ auto Engine::get_pv() -> const string& { return m_pv_uci; }
 
 void Engine::load(const string& fen) { m_board = BitBoard(fen); }
 
+void Engine::load(const BitBoard& board) { m_board = board; }
+
 void Engine::convert_pv(const PVTable& pv_table)
 {
     vector<string> pv_vec;
