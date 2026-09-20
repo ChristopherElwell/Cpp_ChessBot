@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 project(ElwellBot
-    VERSION 1.4
+    VERSION 1.5
     LANGUAGES CXX
 )
 
