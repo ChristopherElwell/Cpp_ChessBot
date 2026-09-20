@@ -396,10 +396,6 @@ void test_move_conversion()
             b_success = false;
             uci_failures++;
         }
-        else
-        {
-            print(".");
-        }
 
         this_board.apply_move(mov);
 
