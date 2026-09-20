@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iostream>
 
 #include "engine.h"
 
