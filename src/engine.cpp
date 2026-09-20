@@ -6,26 +6,24 @@
 #include <cassert>
 #include <cctype>
 #include <chrono>
-#include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <exception>
 #include <format>
 #include <iostream>
-#include <limits>
-#include <memory>
+#include <optional>
 #include <print>
 #include <ranges>
-#include <stdexcept>
+#include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
-#include <tuple>
-#include <utility>
 #include <vector>
 
 #include "bitboard.h"
 #include "bitboard_constants.h"
 #include "data.h"
-#include "eval.h"
 #include "move.h"
 #include "move_gen.h"
 #include "pv.h"
@@ -164,7 +162,7 @@ auto Engine::move_to_algebraic(const Move& move, BitBoard board) -> string
             break;
     }
     const inv_move inverse = board.apply_move(move);
-    MoveGen move_gen(board);
+    const MoveGen move_gen(board);
     if (board.side_to_move() == side_t::white)
     {
         if (move_gen.is_king_in_check<side_t::white>())
@@ -251,17 +249,18 @@ auto Engine::parse_and_set_position(const string& message) -> bool
     return true;
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 auto Engine::uci_to_move(const string& uci, BitBoard& board) -> Move
 {
     const int from_sq = square_coords_to_index.at(uci.substr(0, 2));
     const int to_sq = square_coords_to_index.at(uci.substr(2, 2));
 
-    piece_t from_pc = board.piece_at(from_sq);
-    piece_t to_pc = board.piece_at(to_sq);
+    const piece_t from_pc = board.piece_at(from_sq);
+    const piece_t to_pc = board.piece_at(to_sq);
 
     assert(from_pc != piece_t::none && "no piece on source square");
 
-    // --- Castling ---
+    // Castling
     if (from_pc == piece_t::white_king)
     {
         if (from_sq == countr_zero(castling<side_t::white>::kingside_king_from) &&
@@ -289,15 +288,13 @@ auto Engine::uci_to_move(const string& uci, BitBoard& board) -> Move
         }
     }
 
-    // --- Pawn moves: promotion, en passant, double push ---
+    // Pawn moves: promotion, en passant, double push
     if (from_pc == piece_t::white_pawn || from_pc == piece_t::black_pawn)
     {
-        const bool is_white = from_pc == piece_t::white_pawn;
-
-        // Promotion: 5th char present, e.g. "e7e8q"
-        if (uci.size() == 5)
+        // Promotion
+        if (uci.size() == 5)  // Promotion if 5th char: e7e8Q
         {
-            bool b_is_capture = to_pc != piece_t::none;
+            const bool b_is_capture = to_pc != piece_t::none;
             switch (uci.at(4))
             {
                 case 'q':
@@ -322,14 +319,15 @@ auto Engine::uci_to_move(const string& uci, BitBoard& board) -> Move
             }
         }
 
-        // En passant: diagonal pawn move onto an empty square
-        const bool is_diagonal = (uci[0] != uci[2]);  // file changed
+        // En passant
+        // En passent if file change and no capture
+        const bool is_diagonal = (uci[0] != uci[2]);
         if (is_diagonal && to_pc == piece_t::none)
         {
             return {from_sq, to_sq, move_type_t::en_passent};
         }
 
-        // Double push: rank difference of 2
+        // Double push
         const int rank_diff = std::abs(uci[1] - uci[3]);
         if (rank_diff == 2)
         {
@@ -337,10 +335,13 @@ auto Engine::uci_to_move(const string& uci, BitBoard& board) -> Move
         }
     }
 
+    // Capture
     if (to_pc != piece_t::none)
     {
         return {from_sq, to_sq, move_type_t::capture};
     }
+
+    // Quiet
     return {from_sq, to_sq, move_type_t::quiet};
 }
 
@@ -387,7 +388,7 @@ auto Engine::parse_run(const string& message) -> bool
         return true;
     }
 
-    // --- clock-based time control: wtime/btime/winc/binc/movestogo ---
+    // clock-based time control: wtime/btime/winc/binc/movestogo
     optional<int> wtime;
     optional<int> btime;
     optional<int> winc;
@@ -425,12 +426,12 @@ auto Engine::parse_run(const string& message) -> bool
         const int my_time = (white_to_move ? wtime : btime).value_or(0);
         const int my_inc = (white_to_move ? winc : binc).value_or(0);
 
-        // Very basic time management: budget a fraction of remaining time per move.
-        // Assume ~30 moves left if movestogo wasn't given (sudden death).
+        // budget a fraction of remaining time per move
+        // Assume 30 moves left if movestogo wasn't given
         const int moves_left = movestogo.value_or(default_moves_left);
         int allocated_ms = (my_time / moves_left) + my_inc;
 
-        // Never allocate more than what's left, and leave a small safety buffer.
+        // Never allocate more than what's left
         allocated_ms = std::min(allocated_ms, my_time - buffer_ms);
         allocated_ms = std::max(allocated_ms, min_time_ms);
 
@@ -455,64 +456,73 @@ void Engine::uci_loop()
         {
             continue;
         }
-
-        DEBUG_LOG("Received [{}]", message);
-        if (message == "uci")
+        const bool b_continue = parse_uci(message);
+        if (!b_continue)
         {
-            println("id name ElwellBot\nid author CElwell\nuciok");
-            continue;
-        }
-        if (message == "isready")
-        {
-            println("readyok");
-            continue;
-        }
-        if (message.starts_with("position"))
-        {
-            bool b_success = parse_and_set_position(message);
-            if (!b_success)
-            {
-                LOG("Error while setting position");
-            }
-            continue;
-        }
-        if (message.starts_with("go"))
-        {
-            bool b_success = parse_run(message);
-            if (!b_success)
-            {
-                LOG("Error while starting search. Ceasing search");
-                m_stop_time = chrono::steady_clock::now();
-            }
-        }
-        if (message.starts_with("stop"))
-        {
-            m_b_stop.store(true, memory_order_relaxed);
-            m_stop_cv.notify_all();
-            if (m_search_thread.joinable())
-            {
-                m_search_thread.join();
-            }
-            if (m_timer_thread.joinable())
-            {
-                m_timer_thread.join();
-            }
-        }
-        if (message == "quit")
-        {
-            m_b_stop.store(true, memory_order_relaxed);
-            m_stop_cv.notify_all();
-            if (m_search_thread.joinable())
-            {
-                m_search_thread.join();
-            }
-            if (m_timer_thread.joinable())
-            {
-                m_timer_thread.join();
-            }
             break;
         }
     }
+}
+
+auto Engine::parse_uci(const string& message) -> bool
+{
+    DEBUG_LOG("Received [{}]", message);
+    if (message == "uci")
+    {
+        println("id name ElwellBot\nid author CElwell\nuciok");
+        return true;
+    }
+    if (message == "isready")
+    {
+        println("readyok");
+        return true;
+    }
+    if (message.starts_with("position"))
+    {
+        const bool b_success = parse_and_set_position(message);
+        if (!b_success)
+        {
+            LOG("Error while setting position");
+        }
+        return true;
+    }
+    if (message.starts_with("go"))
+    {
+        const bool b_success = parse_run(message);
+        if (!b_success)
+        {
+            LOG("Error while starting search. Ceasing search");
+            m_stop_time = chrono::steady_clock::now();
+        }
+    }
+    if (message.starts_with("stop"))
+    {
+        m_b_stop.store(true, memory_order_relaxed);
+        m_stop_cv.notify_all();
+        if (m_search_thread.joinable())
+        {
+            m_search_thread.join();
+        }
+        if (m_timer_thread.joinable())
+        {
+            m_timer_thread.join();
+        }
+    }
+    if (message == "quit")
+    {
+        m_b_stop.store(true, memory_order_relaxed);
+        m_stop_cv.notify_all();
+        if (m_search_thread.joinable())
+        {
+            m_search_thread.join();
+        }
+        if (m_timer_thread.joinable())
+        {
+            m_timer_thread.join();
+        }
+        return false;
+    }
+    return true;
 }
 
 Engine::~Engine()

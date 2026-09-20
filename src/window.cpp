@@ -1,7 +1,7 @@
 #include "window.h"
 
-#include <iostream>
-#include <print>
+#include <algorithm>
+#include <cstdint>
 
 #include "engine.h"
 
@@ -30,8 +30,9 @@ auto AspirationWindow::report_result(int eval) -> bool
         }
         else
         {
-            m_beta = max(m_last_successful_eval + margin + (failure_growth << m_fail_high_counter),
-                         eval + margin);
+            m_beta = static_cast<int16_t>(
+                max(m_last_successful_eval + margin + (failure_growth << m_fail_high_counter),
+                    eval + margin));
         }
         m_fail_high_counter++;
         return false;
@@ -46,8 +47,9 @@ auto AspirationWindow::report_result(int eval) -> bool
         }
         else
         {
-            m_alpha = min(m_last_successful_eval - margin - (failure_growth << m_fail_low_counter),
-                          eval - margin);
+            m_alpha = static_cast<int16_t>(
+                min(m_last_successful_eval - margin - (failure_growth << m_fail_low_counter),
+                    eval - margin));
         }
         m_fail_low_counter++;
         return false;
@@ -56,9 +58,9 @@ auto AspirationWindow::report_result(int eval) -> bool
     // passed
     DEBUG_LOG("P: a {} b {} e {} d {}", m_alpha, m_beta, eval, m_depth);
     m_depth++;
-    m_alpha = eval - margin;
-    m_beta = eval + margin;
-    m_last_successful_eval = eval;
+    m_alpha = static_cast<int16_t>(eval - margin);
+    m_beta = static_cast<int16_t>(eval + margin);
+    m_last_successful_eval = static_cast<int16_t>(eval);
     m_fail_high_counter = 0;
     m_fail_low_counter = 0;
     return true;

@@ -1,8 +1,8 @@
 #ifndef PV_H
 #define PV_H
 
+#include <array>
 #include <span>
-#include <string>
 
 #include "move.h"
 

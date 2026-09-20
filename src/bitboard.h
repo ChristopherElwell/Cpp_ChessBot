@@ -55,13 +55,13 @@ public:
 
     piece_range(piece_t start, piece_t stop) : m_start(start), m_stop(stop) {}
 
-    // no color needed — literally every piece, both sides
+    // no color needed, all pieces, both sides
     static auto all() -> piece_range
     {
         return piece_range{piece_t::white_pawn, piece_t::black_king};
     }
 
-    // color-specific versions, each their own template
+    // colour-specific versions, templated to determine colour
     template <side_t Side>
     static auto all() -> piece_range
     {
@@ -75,6 +75,7 @@ public:
         }
     }
 
+    // All pieces but kings, for each side
     template <side_t Side>
     static auto no_king() -> piece_range
     {

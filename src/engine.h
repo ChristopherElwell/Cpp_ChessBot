@@ -33,12 +33,19 @@ enum class mode_t : uint8_t
     ttable,
     history,
     zobrist,
+    divide,
+    checkmove,
+    verify,
 };
 
 struct task_t
 {
-    mode_t mode = mode_t::uci;
-    int count = 0;  // used by puzzles / perft
+    mode_t mode;
+    int count = 0;
+    // NOLINTBEGIN(readability-redundant-string-init)
+    std::string fen = "";
+    std::string uci = "";
+    // NOLINTEND(readability-redundant-string-init)
 };
 
 struct search_state
@@ -88,6 +95,7 @@ private:
 
     auto parse_and_set_position(const std::string &message) -> bool;
     auto parse_run(const std::string &message) -> bool;
+    auto parse_uci(const std::string &message) -> bool;
     static auto split_into_tokens(const std::string &str) -> std::vector<std::string>;
 
 public:

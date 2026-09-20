@@ -1,9 +1,10 @@
 #include "pv.h"
 
-#include <algorithm>
 #include <cassert>
-#include <ranges>
+#include <cstddef>
 #include <span>
+
+#include "move.h"
 
 using namespace std;
 

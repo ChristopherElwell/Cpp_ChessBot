@@ -4,10 +4,11 @@
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <cstdint>
 #include <future>
+// NOLINTNEXTLINE(misc-include-cleaner)
 #include <iostream>
 #include <limits>
-#include <memory>
 #include <mutex>
 #include <print>
 #include <thread>
@@ -19,6 +20,7 @@
 #include "eval.h"
 #include "move.h"
 #include "move_gen.h"
+#include "pv.h"
 #include "ttable.h"
 #include "window.h"
 
@@ -26,7 +28,6 @@ using namespace std;
 
 namespace
 {
-// primary template declaration
 template <side_t Side>
 auto mate_eval(const MoveGen& move_gen, int8_t ply) noexcept -> int16_t;
 
@@ -119,7 +120,7 @@ void Engine::search_async()
         .board = m_board, .b_stop = &m_b_stop, .pv = {}, .history = m_history, .tt = m_tt};
     int eval_completed = 0;
     AspirationWindow window;
-    uint64_t hash = m_board.hash().get();
+    const uint64_t hash = m_board.hash().get();
     while (!state.b_stop->load(memory_order_relaxed))
     {
         assert(hash == m_board.hash().get());
@@ -137,11 +138,8 @@ void Engine::search_async()
             DEBUG_LOG("Completed depth: {}", depth_completed);
         }
     }
-    assert(hash == m_board.hash().get());
     convert_pv(pv_completed);
-    assert(hash == m_board.hash().get());
     m_uci = move_to_uci(pv_completed.best_move());
-    assert(hash == m_board.hash().get());
     m_algebraic = move_to_algebraic(pv_completed.best_move());
     assert(hash == m_board.hash().get());
 
@@ -171,7 +169,7 @@ void Engine::search_async(int depth)
                              .beta = AspirationWindow::beta_init},
                  state);
 
-    // stop being true on a depth search means it was interrupted, discard result
+    // b_stop being true on a depth search means it was interrupted, discard result
     if (state.b_stop->load(memory_order_relaxed))
     {
         DEBUG_LOG("Discarding result of depth search");
@@ -192,6 +190,7 @@ void Engine::search_async(int depth)
 }
 
 template <side_t Side>
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 auto Engine::search(search_args args, search_state& state) -> int16_t
 {
     auto& [board, b_stop, pv, history, tt] = state;
@@ -210,7 +209,7 @@ auto Engine::search(search_args args, search_state& state) -> int16_t
         int16_t eval = probe.node->eval;
         if (is_mate_eval(eval))
         {
-            eval += (eval > 0) ? static_cast<int16_t>(-args.ply) : static_cast<int16_t>(args.ply);
+            eval = static_cast<int16_t>(eval + (eval > 0 ? -args.ply : args.ply));
         }
         return eval;
     }
@@ -301,6 +300,7 @@ auto Engine::search(search_args args, search_state& state) -> int16_t
 }
 
 template <side_t Side>
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 auto Engine::quiescence(search_args args, search_state& state) -> int16_t
 {
     auto& [board, b_stop, pv, history, tt] = state;
@@ -319,7 +319,7 @@ auto Engine::quiescence(search_args args, search_state& state) -> int16_t
         int16_t eval = probe.node->eval;
         if (is_mate_eval(eval))
         {
-            eval += (eval > 0) ? static_cast<int16_t>(-args.ply) : static_cast<int16_t>(args.ply);
+            eval = static_cast<int16_t>(eval + (eval > 0 ? -args.ply : args.ply));
         }
         return eval;
     }
@@ -330,7 +330,7 @@ auto Engine::quiescence(search_args args, search_state& state) -> int16_t
     int16_t best_eval = numeric_limits<int16_t>::min();
     if (!b_moving_side_in_check)
     {
-        int16_t stand_pat = evaluate<Side>(board);
+        const int16_t stand_pat = evaluate<Side>(board);
         // max quiescence depth
         if (args.depth < -max_quiescence_depth)
         {
@@ -451,7 +451,7 @@ auto mate_eval(const MoveGen& move_gen, int8_t ply) noexcept -> int16_t
 {
     if (move_gen.is_king_in_check<Side>())
     {
-        return static_cast<int16_t>(ply) - checkmate_eval;
+        return static_cast<int16_t>(ply - checkmate_eval);
     }
     return 0;  // stalemate
 }

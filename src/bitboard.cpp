@@ -1,10 +1,12 @@
 #include "bitboard.h"
 
 #include <array>
+#include <bit>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <format>
-#include <print>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 
@@ -133,7 +135,7 @@ BitBoard::BitBoard(const string& fen)
 
 auto BitBoard::to_fen() const -> string
 {
-    // index -> char lookup, built from each piece bitboard via bit_scan
+    // index -> char lookup, built from each piece bitboard
     std::array<char, num_squares> board_chars{};
     board_chars.fill(0);
 
@@ -141,12 +143,12 @@ auto BitBoard::to_fen() const -> string
     {
         for (const uint64_t bit : bit_scan(m_board[static_cast<int>(piece)]))
         {
-            const int index = std::countr_zero(bit);  // requires <bit>, C++20
+            const int index = std::countr_zero(bit);
             board_chars[index] = piece_t_to_piece_symbol.at(piece);
         }
     }
 
-    // --- piece placement, rank 8 -> 1, file a -> h ---
+    // Fill fen with piece positions
     string fen;
     for (int rank = 8; rank >= 1; --rank)
     {
@@ -177,12 +179,12 @@ auto BitBoard::to_fen() const -> string
         }
     }
 
-    // --- side to move ---
+    // Add side to move to fen
     const uint64_t info = m_board[static_cast<int>(piece_t::info)];
     fen += ' ';
     fen += (info & turn_bit) ? 'w' : 'b';
 
-    // --- castling rights ---
+    // Add castling rights to fen
     fen += ' ';
     string rights;
     if (info & castling<side_t::white>::kingside_right)
@@ -203,7 +205,7 @@ auto BitBoard::to_fen() const -> string
     }
     fen += rights.empty() ? "-" : rights;
 
-    // --- en passant square ---
+    // Add enpasssent sq to fen
     fen += ' ';
     const uint64_t known_flags = turn_bit | castling<side_t::white>::kingside_right |
                                  castling<side_t::white>::queenside_right |

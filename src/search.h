@@ -10,7 +10,7 @@ struct search_args
     int8_t ply;
     int16_t alpha;
     int16_t beta;
-    // NOLINTEND
+    // NOLINTEND(misc-non-private-member-variables-in-classes)
 
     [[nodiscard]] auto next() const -> search_args
     {

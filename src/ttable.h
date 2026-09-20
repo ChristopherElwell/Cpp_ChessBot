@@ -48,7 +48,7 @@ private:
 
 public:
     void set_size(size_t size = default_size);
-    auto size() -> size_t;
+    [[nodiscard]] auto size() const -> size_t;
     [[nodiscard]] auto probe(uint64_t key, const search_args& args) -> tt_result;
     void store(tt_node node, int16_t alpha, int16_t beta, int8_t ply);
     void clear();

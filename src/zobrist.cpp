@@ -1,13 +1,14 @@
 #include "zobrist.h"
 
+#include <array>
 #include <bit>
+#include <cstddef>
 #include <cstdint>
 
 #include "bitboard.h"
 #include "bitboard_constants.h"
 #include "bitscan.h"
 #include "data.h"
-#include "move.h"
 
 using namespace std;
 
@@ -93,7 +94,7 @@ void ZobristHash::push_info(uint64_t mask)
                   : 0;
     for (const uint64_t en_passent : bit_scan(mask & ~(masks::rank_1 | masks::rank_8)))
     {
-        int en_passent_file = countr_zero(en_passent) % 8;
+        const int en_passent_file = countr_zero(en_passent) % 8;
         m_hash ^= zobrist_info_keys.at(en_passant_key + en_passent_file);
     }
 }

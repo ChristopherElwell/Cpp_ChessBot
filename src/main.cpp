@@ -1,8 +1,6 @@
-#include <cstdint>
 #include <cstdlib>
-#include <filesystem>
+#include <exception>
 #include <iostream>
-#include <print>
 #include <span>
 #include <string>
 #include <string_view>
@@ -15,101 +13,50 @@ using namespace std;
 
 namespace
 {
-auto parse_arguments(int argc, span<char* const> argv) -> vector<task_t>;
-}
 
+auto parse_arguments(int argc, span<char* const> argv) -> vector<task_t>;
+
+constexpr auto is_diagnostic(mode_t mode) -> bool;
+
+auto run_task(const task_t& task) -> void;
+
+}  // namespace
+
+// NOLINTNEXTLINE(bugprone-exception-escape)
 auto main(int argc, char* argv[]) -> int
 {
-    // Handled separately from the rest of the flags: it takes a FEN + depth pair
-    // rather than a single count, and is a one-off diagnostic rather than something
-    // meant to be combined with other tasks in one invocation.
-    if (argc >= 2 && std::string_view(argv[1]) == "--divide")
+    try
     {
-        if (argc < 4)
-        {
-            std::cerr << "--divide requires a FEN and a depth, e.g.\n"
-                      << "  chess --divide \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - "
-                         "0 1\" 3\n";
-            return EXIT_FAILURE;
-        }
-        const std::string fen = argv[2];
-        const int depth = std::stoi(argv[3]);
-        run_perft_divide(fen, depth);
-        return 0;
-    }
-    if (argc >= 2 && std::string_view(argv[1]) == "--checkmove")
-    {
-        if (argc < 4)
-        {
-            std::cerr << "--checkmove requires a FEN and a UCI move, e.g.\n"
-                      << "  chess --checkmove \"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/"
-                         "R3K2R w KQkq -\" d5e6\n";
-            return EXIT_FAILURE;
-        }
-        const std::string fen = argv[2];
-        const std::string uci = argv[3];
-        debug_check_state_after_move(fen, uci);
-        return 0;
-    }
-    if (argc >= 2 && std::string_view(argv[1]) == "--verify")
-    {
-        if (argc < 4)
-        {
-            std::cerr << "--verify requires a FEN and a depth, e.g.\n"
-                      << "  chess --verify \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - "
-                         "0 1\" 3\n";
-            return EXIT_FAILURE;
-        }
-        const std::string fen = argv[2];
-        const int depth = std::stoi(argv[3]);
-        run_perft_verify(fen, depth);
-        return 0;
-    }
+        const vector<task_t> args = parse_arguments(argc, span(argv, static_cast<size_t>(argc)));
 
-    const vector<task_t> args = parse_arguments(argc, span(argv, static_cast<size_t>(argc)));
+        if (args.empty())
+        {
+            Engine engine;
+            engine.uci_loop();
+            return 0;
+        }
 
-    if (args.empty())
-    {
-        // No flags given: default to UCI mode, same as before.
-        Engine engine;
-        engine.uci_loop();
+        for (const task_t& task : args)
+        {
+            run_task(task);
+        }
         return 0;
     }
-
-    for (const task_t& task : args)
+    catch (const std::exception& e)
     {
-        switch (task.mode)
-        {
-            case mode_t::uci:
-            {
-                Engine engine;
-                engine.uci_loop();
-                break;
-            }
-            case mode_t::puzzles:
-                test_puzzles(task.count);
-                break;
-            case mode_t::perft:
-                run_perft_test(task.count);
-                break;
-            case mode_t::conversion:
-                test_move_conversion();
-                break;
-            case mode_t::ttable:
-                test_ttable();
-                break;
-            case mode_t::history:
-                test_board_history();
-                break;
-            case mode_t::zobrist:
-                test_zobrist_hash();
-                break;
-        }
+        std::cerr << "Fatal error: " << e.what() << '\n';
+        return 1;
     }
-    return 0;
+    catch (...)
+    {
+        std::cerr << "Fatal error: unknown exception\n";
+        return 1;
+    }
 }
+
 namespace
 {
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 auto parse_arguments(int argc, span<char* const> argv) -> vector<task_t>
 {
     vector<task_t> args{};
@@ -170,6 +117,51 @@ auto parse_arguments(int argc, span<char* const> argv) -> vector<task_t>
         {
             args.push_back(task_t{.mode = mode_t::ttable});
         }
+        else if (arg == "--divide")
+        {
+            if (i + 2 >= argc)
+            {
+                std::cerr << "--divide requires a FEN and a depth, e.g.\n"
+                          << "  chess --divide \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w "
+                             "KQkq - 0 1\" 3\n";
+                std::exit(EXIT_FAILURE);
+            }
+            task_t task{};
+            task.mode = mode_t::divide;
+            task.fen = argv[++i];
+            task.count = std::stoi(argv[++i]);
+            args.push_back(task);
+        }
+        else if (arg == "--checkmove")
+        {
+            if (i + 2 >= argc)
+            {
+                std::cerr << "--checkmove requires a FEN and a UCI move, e.g.\n"
+                          << "  chess --checkmove \"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/"
+                             "PPPBBPPP/R3K2R w KQkq -\" d5e6\n";
+                std::exit(EXIT_FAILURE);
+            }
+            task_t task{};
+            task.mode = mode_t::checkmove;
+            task.fen = argv[++i];
+            task.uci = argv[++i];
+            args.push_back(task);
+        }
+        else if (arg == "--verify")
+        {
+            if (i + 2 >= argc)
+            {
+                std::cerr << "--verify requires a FEN and a depth, e.g.\n"
+                          << "  chess --verify \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w "
+                             "KQkq - 0 1\" 3\n";
+                std::exit(EXIT_FAILURE);
+            }
+            task_t task{};
+            task.mode = mode_t::verify;
+            task.fen = argv[++i];
+            task.count = std::stoi(argv[++i]);
+            args.push_back(task);
+        }
         else if (arg == "--help" || arg == "-h")
         {
             std::cout
@@ -194,7 +186,10 @@ auto parse_arguments(int argc, span<char* const> argv) -> vector<task_t>
                 << "  chess --help                     Show this help\n"
                 << "\n"
                 << "Flags can be combined to run multiple tests in one invocation, e.g.:\n"
-                << "  chess --conversion --perft 5\n";
+                << "  chess --conversion --perft 5\n"
+                << "\n"
+                << "--divide, --checkmove and --verify are one-off diagnostics and must be\n"
+                << "used on their own, not combined with other flags.\n";
             std::exit(EXIT_SUCCESS);
         }
         else
@@ -203,6 +198,65 @@ auto parse_arguments(int argc, span<char* const> argv) -> vector<task_t>
             std::exit(EXIT_FAILURE);
         }
     }
+
+    if (args.size() > 1)
+    {
+        for (const task_t& task : args)
+        {
+            if (is_diagnostic(task.mode))
+            {
+                std::cerr << "--divide, --checkmove and --verify must be used on their own, "
+                             "not combined with other flags\n";
+                std::exit(EXIT_FAILURE);
+            }
+        }
+    }
+
     return args;
+}
+
+constexpr auto is_diagnostic(mode_t mode) -> bool
+{
+    return mode == mode_t::divide || mode == mode_t::checkmove || mode == mode_t::verify;
+}
+
+auto run_task(const task_t& task) -> void
+{
+    switch (task.mode)
+    {
+        case mode_t::uci:
+        {
+            Engine engine;
+            engine.uci_loop();
+            break;
+        }
+        case mode_t::puzzles:
+            test_puzzles(task.count);
+            break;
+        case mode_t::perft:
+            run_perft_test(task.count);
+            break;
+        case mode_t::conversion:
+            test_move_conversion();
+            break;
+        case mode_t::ttable:
+            test_ttable();
+            break;
+        case mode_t::history:
+            test_board_history();
+            break;
+        case mode_t::zobrist:
+            test_zobrist_hash();
+            break;
+        case mode_t::divide:
+            run_perft_divide(task.fen, task.count);
+            break;
+        case mode_t::checkmove:
+            debug_check_state_after_move(task.fen, task.uci);
+            break;
+        case mode_t::verify:
+            run_perft_verify(task.fen, task.count);
+            break;
+    }
 }
 }  // namespace

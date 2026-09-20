@@ -2,6 +2,7 @@
 #define DATA_H
 #include <array>
 #include <cstdint>
+#include <string_view>
 #include <unordered_map>
 
 #include "bitboard_constants.h"
@@ -270,9 +271,11 @@ inline constexpr std::array<int16_t, num_squares> endgame<piece_t::black_king> =
 };
 
 }  // namespace pc_sq_table
+
 namespace masks
 {
-// RANK AND files
+
+// ranks
 static constexpr uint64_t rank_1 = 0x00000000000000FF;
 static constexpr uint64_t rank_2 = 0x000000000000FF00;
 static constexpr uint64_t rank_3 = 0x0000000000FF0000;
@@ -282,6 +285,10 @@ static constexpr uint64_t rank_6 = 0x0000FF0000000000;
 static constexpr uint64_t rank_7 = 0x00FF000000000000;
 static constexpr uint64_t rank_8 = 0xFF00000000000000;
 
+inline constexpr std::array<uint64_t, 8> ranks = {rank_1, rank_2, rank_3, rank_4,
+                                                  rank_5, rank_6, rank_7, rank_8};
+
+// files
 static constexpr uint64_t file_a = 0x8080808080808080;
 static constexpr uint64_t file_b = 0x4040404040404040;
 static constexpr uint64_t file_c = 0x2020202020202020;
@@ -291,12 +298,10 @@ static constexpr uint64_t file_f = 0x0404040404040404;
 static constexpr uint64_t file_g = 0x0202020202020202;
 static constexpr uint64_t file_h = 0x0101010101010101;
 
-inline constexpr std::array<uint64_t, 8> ranks = {rank_1, rank_2, rank_3, rank_4,
-                                                  rank_5, rank_6, rank_7, rank_8};
-
 inline constexpr std::array<uint64_t, 8> files = {file_h, file_g, file_f, file_e,
                                                   file_d, file_c, file_b, file_a};
 
+// diagonals
 static constexpr uint64_t anti_diag = 0x8040201008040201;
 
 inline constexpr std::array<uint64_t, 15> diag_up = {0,
@@ -335,7 +340,7 @@ inline constexpr std::array<uint64_t, 15> diag_down = {0,
 
 static constexpr uint64_t sq_a8 = 0x8000000000000000;
 
-// helpers
+// conversion lookup tables
 const std::array<std::string_view, num_squares> square_coords = {
     "h1", "g1", "f1", "e1", "d1", "c1", "b1", "a1", "h2", "g2", "f2", "e2", "d2", "c2", "b2", "a2",
     "h3", "g3", "f3", "e3", "d3", "c3", "b3", "a3", "h4", "g4", "f4", "e4", "d4", "c4", "b4", "a4",
@@ -380,28 +385,30 @@ const std::array<const char, 6> lower_case_piece_chars = {
     'p', 'n', 'b', 'r', 'q', 'k',
 };
 
+// Bitboard printout background characters
 static constexpr auto black_sq_char = "⬛";
 static constexpr auto white_sq_char = "⬜";
 
 template <side_t Side>
 struct castling
 {
-    // --- occupancy / attack-check squares (board masks, so black = white << 56) ---
+    // Mask for all squares that need to be empty
     static constexpr uint64_t kingside_space =
         (Side == side_t::white) ? 0b110ULL : (0b110ULL << 56);
     static constexpr uint64_t queenside_space =
         (Side == side_t::white) ? 0b01110000ULL : (0b01110000ULL << 56);
+
+    // Mask for all squares that must not be attacked
     static constexpr uint64_t kingside_attacked =
         (Side == side_t::white) ? 0b1110ULL : (0b1110ULL << 56);
     static constexpr uint64_t queenside_attacked =
         (Side == side_t::white) ? 0b00111000ULL : (0b00111000ULL << 56);
 
-    // --- castling rights flags (distinct bits in the info word, NOT board squares —
-    //     no <<56 relationship between white/black here) ---
+    // Masks for the position of the castling rights flags
     static constexpr uint64_t kingside_right = (Side == side_t::white) ? 0b1ULL : 0b100ULL;
     static constexpr uint64_t queenside_right = (Side == side_t::white) ? 0b10ULL : 0b1000ULL;
 
-    // --- king/rook from/to squares (board masks, black = white << 56) ---
+    // Rook move masks
     static constexpr uint64_t kingside_king_from =
         (Side == side_t::white) ? 0b1000ULL : (0b1000ULL << 56);
     static constexpr uint64_t kingside_rook_from =
@@ -411,6 +418,7 @@ struct castling
     static constexpr uint64_t queenside_rook_from =
         (Side == side_t::white) ? 0b10000000ULL : (0b10000000ULL << 56);
 
+    // King move masks
     static constexpr uint64_t kingside_king_to =
         (Side == side_t::white) ? 0b0010ULL : (0b0010ULL << 56);
     static constexpr uint64_t kingside_rook_to =
@@ -423,7 +431,6 @@ struct castling
 
 namespace move_masks
 {
-// move gen
 const std::array<uint64_t, num_squares> king_moves = {
     0x0000000000000302, 0x0000000000000705, 0x0000000000000e0a, 0x0000000000001c14,
     0x0000000000003828, 0x0000000000007050, 0x000000000000e0a0, 0x000000000000c040,
@@ -462,6 +469,7 @@ const std::array<uint64_t, num_squares> knight_moves = {
     0x0044280000000000, 0x0088500000000000, 0x0010a00000000000, 0x0020400000000000,
 };
 
+// Precomputed moves for rooks and queens
 constexpr int sliding_moves_mask = 0x3f;
 const std::array<uint8_t, 768> sliding_moves = {
     0xfe, 0xfd, 0xfb, 0xf7, 0xef, 0xdf, 0xbf, 0x7f, 0x2, 0xfd, 0xfa, 0xf6, 0xee, 0xde, 0xbe, 0x7e,

@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <bit>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 #include "eval.h"
 #include "search.h"
@@ -50,7 +53,8 @@ void TTable::store(tt_node node, int16_t alpha, int16_t beta, int8_t ply)
 
     if (is_mate_eval(node.eval))
     {
-        node.eval += (node.eval > 0) ? static_cast<int16_t>(ply) : static_cast<int16_t>(-ply);
+        node.eval = static_cast<int16_t>(
+            node.eval + ((node.eval > 0) ? static_cast<int16_t>(ply) : static_cast<int16_t>(-ply)));
     }
     if (node.eval >= beta)
     {
@@ -77,4 +81,4 @@ void TTable::set_size(size_t size)
 
 void TTable::clear() { std::ranges::fill(m_table, tt_node{}); }
 
-auto TTable::size() -> size_t { return m_size; }
+auto TTable::size() const -> size_t { return m_size; }

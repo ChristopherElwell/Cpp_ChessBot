@@ -2,7 +2,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <ranges>
 
 #include "bitboard.h"
 #include "data.h"
@@ -42,19 +41,19 @@ struct scored_move
     Move move;
 };
 
-class move_iterator
+class MoveIterator
 {
 public:
-    explicit move_iterator(const scored_move *ptr) : m_ptr(ptr) {}
+    explicit MoveIterator(const scored_move *ptr) : m_ptr(ptr) {}
 
     auto operator*() const -> const Move & { return m_ptr->move; }
-    auto operator++() -> move_iterator &
+    auto operator++() -> MoveIterator &
     {
         ++m_ptr;
         return *this;
     }
 
-    friend auto operator!=(move_iterator lhs, move_iterator rhs) -> bool
+    friend auto operator!=(MoveIterator lhs, MoveIterator rhs) -> bool
     {
         return lhs.m_ptr != rhs.m_ptr;
     }
@@ -126,9 +125,9 @@ public:
     MoveGen(MoveGen &&) = delete;
     auto operator=(MoveGen &&other) -> MoveGen & = delete;
 
-    [[nodiscard]] auto begin() const -> move_iterator { return move_iterator(m_movs.data()); }
-    [[nodiscard]] auto end() const -> move_iterator
+    [[nodiscard]] auto begin() const -> MoveIterator { return MoveIterator(m_movs.data()); }
+    [[nodiscard]] auto end() const -> MoveIterator
     {
-        return move_iterator(m_movs.data() + m_end_idx);
+        return MoveIterator(m_movs.data() + m_end_idx);
     }
 };

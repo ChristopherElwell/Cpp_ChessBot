@@ -3,11 +3,9 @@
 #include <bit>
 #include <cassert>
 #include <cstdint>
-#include <format>
-#include <string>
 
 #include "bitboard.h"
-#include "data.h"
+#include "bitboard_constants.h"
 
 using namespace std;
 
@@ -30,4 +28,3 @@ auto Move::from() const -> int { return (m_mask >> from_shift) & from_mask; }
 auto Move::to() const -> int { return (m_mask >> to_shift) & to_mask; }
 
 auto Move::operator==(Move other) const -> bool { return m_mask == other.m_mask; }
-// NOLINTEND(bugprone-easily-swappable-parameters)

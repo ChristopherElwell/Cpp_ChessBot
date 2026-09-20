@@ -1,19 +1,22 @@
 #include "board_history.h"
 
 #include <cassert>
+#include <utility>
 
 #include "zobrist.h"
+
+using namespace std;
 
 void BoardHistory::push_back(ZobristHash hash)
 {
     m_history.at(m_end++) = history_entry{.hash = hash, .b_irriversible = false};
-    assert(m_end < static_cast<int>(stack_size));
+    assert(cmp_less(m_end, stack_size));
 }
 
 void BoardHistory::push_irreversible(ZobristHash hash)
 {
     m_history.at(m_end++) = history_entry{.hash = hash, .b_irriversible = true};
-    assert(m_end < static_cast<int>(stack_size));
+    assert(cmp_less(m_end, stack_size));
 }
 
 void BoardHistory::pop_back()

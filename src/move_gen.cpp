@@ -5,8 +5,6 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
-#include <print>
 
 #include "bitboard.h"
 #include "bitboard_constants.h"
@@ -72,12 +70,14 @@ auto MoveGen::get_rook_attacks(const uint64_t rook) const -> uint64_t
     const int rank = pos >> 3;
     const int file = pos & 7;
     const int base = pos & ~7;
+    // NOLINTBEGIN(clang-analyzer-core.BitwiseShift)
     uint64_t attacks =
         (uint64_t)(move_masks::sliding_moves[(((m_board[piece_t::all_pcs] >> (base + 1)) &
                                                move_masks::sliding_moves_mask)
                                               << 3) +
                                              file])
         << base;
+    // NOLINTEND(clang-analyzer-core.BitwiseShift)
 
     const uint64_t file_isolated = m_board[piece_t::all_pcs] << (8 - file) & masks::file_h;
     const uint64_t rotated = (file_isolated * masks::anti_diag) >> 56;
@@ -472,8 +472,7 @@ auto MoveGen::score_move(move_type_t type, piece_t moving_pc, piece_t capturing_
         case move_type_t::pawn_double:
         case move_type_t::castle_kingside:
         case move_type_t::castle_queenside:
-            // Higher-kind piece moving scores slightly higher; mostly a
-            // stable tiebreak, no capture involved.
+            // Higher-kind piece moving scores slightly higher
             score += piece_kind(moving_pc);
             break;
 

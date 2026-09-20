@@ -293,8 +293,8 @@ void test_puzzles(size_t count)
     for (auto pzl : pzls)
     {
         string &fen = pzl[1];
-        const string &pv = pzl[2];
-        istringstream iss(pv);
+        const string &pv_str = pzl[2];
+        istringstream iss(pv_str);
         string answer_uci;
         string first_move_uci;
         iss >> first_move_uci;
@@ -350,10 +350,6 @@ void test_move_conversion()
     {
         println("CSV move conversion test: no rows read from [{}]", priv::test_games_path.string());
         return;
-    }
-    else
-    {
-        println("CSV opened");
     }
 
     int total = 0;
@@ -431,13 +427,13 @@ void test_ttable()
 {
     println("Running TTable test...");
 
-    TTable tt;
-    tt.set_size(4);
+    TTable ttable;
+    ttable.set_size(4);
 
     int total = 0;
     int success = 0;
 
-    auto check = [&](bool condition, const string &name)
+    auto check = [&](bool condition, const string &name) -> void
     {
         total++;
 
@@ -464,7 +460,7 @@ void test_ttable()
     // 1. Empty table should miss
     // --------------------------------
     {
-        const auto result = tt.probe(key, args);
+        const auto result = ttable.probe(key, args);
 
         check(result.node == nullptr, "empty table returns nullptr");
         check(result.result == tt_probe_result::miss, "empty table returns miss");
@@ -476,16 +472,17 @@ void test_ttable()
     {
         const Move move{};
 
-        tt.store(
+        ttable.store(
             tt_node{
                 .key = key,
                 .best_move = move,
                 .eval = 25,
                 .depth = 5,
+                .flag = {},
             },
             args.alpha, args.beta, 0);
 
-        const auto result = tt.probe(key, args);
+        const auto result = ttable.probe(key, args);
 
         check(result.node != nullptr, "stored entry can be probed");
         check(result.result == tt_probe_result::eval, "exact entry returns eval");
@@ -507,7 +504,7 @@ void test_ttable()
             .beta = 100,
         };
 
-        const auto result = tt.probe(key, deeper_args);
+        const auto result = ttable.probe(key, deeper_args);
 
         check(result.node != nullptr, "shallower entry still returns node");
         check(result.result == tt_probe_result::move, "shallower entry returns move");
@@ -524,7 +521,7 @@ void test_ttable()
             .beta = 100,
         };
 
-        const auto result = tt.probe(key, same_depth);
+        const auto result = ttable.probe(key, same_depth);
 
         check(result.result == tt_probe_result::eval, "entry at required depth returns eval");
         check(result.node->eval == 25, "exact eval is preserved");
@@ -535,7 +532,7 @@ void test_ttable()
     //    a cutoff should only provide move
     // --------------------------------
     {
-        tt.store(
+        ttable.store(
             tt_node{
                 .key = key,
                 .best_move = {},
@@ -544,7 +541,7 @@ void test_ttable()
             },
             0, 100, 0);
 
-        const auto result = tt.probe(key, args);
+        const auto result = ttable.probe(key, args);
 
         // 0 < 50 < 100, therefore exact.
         check(result.result == tt_probe_result::eval,
@@ -556,7 +553,7 @@ void test_ttable()
     // 6. Fail-high should be lower bound
     // --------------------------------
     {
-        tt.store(
+        ttable.store(
             tt_node{
                 .key = key,
                 .best_move = {},
@@ -565,7 +562,7 @@ void test_ttable()
             },
             -100, 100, 0);
 
-        const auto result = tt.probe(key, args);
+        const auto result = ttable.probe(key, args);
 
         check(result.result == tt_probe_result::eval, "fail-high entry returns eval");
         check(result.node->flag == tt_node_flag::lower_bound, "fail-high is lower bound");
@@ -575,7 +572,7 @@ void test_ttable()
     // 7. Fail-low should be upper bound
     // --------------------------------
     {
-        tt.store(
+        ttable.store(
             tt_node{
                 .key = key,
                 .best_move = {},
@@ -584,7 +581,7 @@ void test_ttable()
             },
             -100, 100, 0);
 
-        const auto result = tt.probe(key, args);
+        const auto result = ttable.probe(key, args);
 
         check(result.result == tt_probe_result::eval, "fail-low entry returns eval");
         check(result.node->flag == tt_node_flag::upper_bound, "fail-low is upper bound");
@@ -602,7 +599,7 @@ void test_ttable()
             .beta = 200,
         };
 
-        const auto result = tt.probe(key, no_cutoff);
+        const auto result = ttable.probe(key, no_cutoff);
 
         check(result.node != nullptr, "bound entry still returns node");
         check(result.result == tt_probe_result::move, "bound that cannot cutoff returns move");
@@ -613,7 +610,7 @@ void test_ttable()
     //    deeper entry
     // --------------------------------
     {
-        tt.store(
+        ttable.store(
             tt_node{
                 .key = key,
                 .best_move = {},
@@ -622,7 +619,7 @@ void test_ttable()
             },
             -100, 100, 0);
 
-        const auto result = tt.probe(key, args);
+        const auto result = ttable.probe(key, args);
 
         check(result.node->depth == 5, "shallower entry does not replace deeper entry");
         check(result.node->eval == -150, "deeper entry eval is preserved");
@@ -632,7 +629,7 @@ void test_ttable()
     // 10. Deeper store should replace
     // --------------------------------
     {
-        tt.store(
+        ttable.store(
             tt_node{
                 .key = key,
                 .best_move = {},
@@ -641,7 +638,7 @@ void test_ttable()
             },
             -100, 100, 0);
 
-        const auto result = tt.probe(key, args);
+        const auto result = ttable.probe(key, args);
 
         check(result.node->depth == 7, "deeper entry replaces old entry");
         check(result.node->eval == 75, "deeper entry eval is stored");
@@ -650,10 +647,10 @@ void test_ttable()
     // --------------------------------
     // 11. clear() should invalidate entries
     // --------------------------------
-    tt.clear();
+    ttable.clear();
 
     {
-        const auto result = tt.probe(key, args);
+        const auto result = ttable.probe(key, args);
 
         check(result.node == nullptr, "clear removes stored entry");
         check(result.result == tt_probe_result::miss, "clear causes probe miss");
@@ -864,7 +861,7 @@ auto read_csv(const filesystem::path &filename, size_t lines) -> vector<vector<s
     }
 
     string line;
-    int counter = 0;
+    size_t counter = 0;
     while (getline(file, line) && counter < lines)
     {
         vector<string> row;

@@ -4,7 +4,6 @@
 #include <string>
 
 #include "bitboard_constants.h"
-#include "zobrist.h"
 
 inline auto move_type_to_string(move_type_t move_type) -> std::string
 {
